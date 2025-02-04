@@ -31,7 +31,6 @@
             padding: 10px;
             box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
             z-index: 1000;
-            /* Makes sure it’s on top */
         }
 
         #coordinates {
@@ -66,9 +65,9 @@
                 "sources": {
                     "custom-tiles": {
                         "type": "vector",
-                        "tiles": ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"],  // ✅ Corrected URL
+                        "tiles": ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"], 
                         "minzoom": 0,
-                        "maxzoom": 14  // Adjust based on your data
+                        "maxzoom": 14  
                     }
                 },
                 "glyphs": "https://fonts.undpgeohub.org/fonts/{fontstack}/{range}.pbf",
@@ -149,18 +148,18 @@
                         "source": "custom-tiles",
                         "source-layer": "transportation_name",  // navn på veier Layer
                         "layout": {
-                            "text-field": ["get", "name"],  // This assumes your data contains a "name" field for roads
-                            "text-font": ['Roboto Regular'],  // You can adjust the font here
-                            "text-size": 12,  // Set the text size
-                            "text-allow-overlap": false,  // Allow text to overlap (optional)
-                            "text-max-width": 8,  // Optional: limits the width of the text label
+                            "text-field": ["get", "name"], 
+                            "text-font": ['Roboto Regular'],  
+                            "text-size": 12, 
+                            "text-allow-overlap": false,  
+                            "text-max-width": 8,  
                             "symbol-spacing": 500
                         },
                         "paint": {
-                            "text-color": "#000000",  // Set text color
-                            "text-halo-color": "#FFFFFF",  // Set halo (outline) color
-                            "text-halo-width": 2,  // Set halo width (outline around text)
-                            "text-opacity": 1  // Set opacity of the text
+                            "text-color": "#000000",  
+                            "text-halo-color": "#FFFFFF", 
+                            "text-halo-width": 2,  
+                            "text-opacity": 1  
                         }
                     },
                     {
@@ -183,42 +182,38 @@
             displayControlsDefault: false,
 
             styles: [
-                // Points (circle)
                 {
                     "id": "gl-draw-point",
                     "type": "circle",
                     "filter": ["==", "$type", "Point"],
 
                 },
-                // Lines
                 {
                     "id": "gl-draw-line",
                     "type": "line",
                     "filter": ["==", "$type", "LineString"],
                     "paint": {
-                        "line-color": "#FF0000",   // Red lines
-                        "line-width": 3,           // Thicker lines
-                        "line-dasharray": [0.2, 2] // Optional dashed line style
+                        "line-color": "#FF0000",   
+                        "line-width": 3,           
+                        "line-dasharray": [0.2, 2] 
                     }
                 },
-                // Polygon fill
                 {
                     "id": "gl-draw-polygon-fill",
                     "type": "fill",
                     "filter": ["==", "$type", "Polygon"],
                     "paint": {
-                        "fill-color": "#FF0000", // Fill color
-                        "fill-opacity": 0.3      // Fill opacity
+                        "fill-color": "#FF0000",
+                        "fill-opacity": 0.3     
                     }
                 },
-                // Polygon outline
                 {
                     "id": "gl-draw-polygon-stroke",
                     "type": "line",
                     "filter": ["==", "$type", "Polygon"],
                     "paint": {
-                        "line-color": "#FF0000", // Outline color
-                        "line-width": 2          // Outline width
+                        "line-color": "#FF0000",
+                        "line-width": 2          
                     }
                 }
             ]
@@ -228,25 +223,23 @@
         const coordinates = document.getElementById('coordinates');
 
         map.on('draw.create', (e) => {
-            const feature = e.features[0]; // Get the first feature created
+            const feature = e.features[0]; 
             if (!feature) return;
 
-            // Handle different geometry types
             let coords = [];
             if (feature.geometry.type === 'Point') {
                 coords = feature.geometry.coordinates;
             } else if (feature.geometry.type === 'LineString') {
                 coords = feature.geometry.coordinates;
             } else if (feature.geometry.type === 'Polygon') {
-                coords = feature.geometry.coordinates[0]; // First ring of polygon
+                coords = feature.geometry.coordinates[0];
             }
 
             if (coords.length > 0) {
                 coordinates.innerHTML = `Coordinates:<br />${coords.map(coord => `Lng: ${coord[0].toFixed(5)}, Lat: ${coord[1].toFixed(5)}`).join('<br />')}`;
 
-                // Optionally, you can display a popup with the coordinates
                 new maplibregl.Popup()
-                    .setLngLat(coords[0]) // Show popup at first coordinate
+                    .setLngLat(coords[0])
                     .setHTML(`<strong>Coordinates:</strong><br>Lng: ${coords[0][0].toFixed(5)}<br>Lat: ${coords[0][1].toFixed(5)}`)
                     .addTo(map);
             }
@@ -271,7 +264,7 @@
 
         document.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
-                draw.changeMode("simple_select"); // Ends line drawing
+                draw.changeMode("simple_select"); 
             }
         });
 
