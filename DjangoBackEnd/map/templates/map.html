@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapLibre with Custom Tile Server</title>
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css">
+    <!-- Mapbox Draw Library -->
+    <script src="https://unpkg.com/@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css">
+
+    <style>
+        body,
+        html {
+            margin: 0;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+
+        #toolbar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            /* Makes sure it’s on top */
+        }
+
+        #coordinates {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            font-family: Arial, sans-serif;
+            z-index: 999;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="toolbar">
+        <button id="draw-point">Draw Point</button>
+        <button id="draw-line">Draw Line</button>
+        <button id="draw-polygon">Draw Polygon</button>
+        <button id="clear-drawings">Clear</button>
+    </div>
+
+    <pre id="coordinates" class="coordinates"></pre>
+
+
+    <div id="map"></div>
+    <script>
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                "version": 8,
+                "sources": {
+                    "custom-tiles": {
+                        "type": "vector",
+                        "tiles": ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"],  // ✅ Corrected URL
+                        "minzoom": 0,
+                        "maxzoom": 14  // Adjust based on your data
+                    }
+                },
+                "glyphs": "https://fonts.googleapis.com/css2?family=Open+Sans&display=swap",
+                "layers": [
+                    {
+                        "id": "roads-layer",
+                        "type": "line",
+                        "source": "custom-tiles",
+                        "source-layer": "transportation",  // 🚗 Roads Layer
+                        "paint": {
+                            "line-color": "#B0BEC5",
+                            "line-width": 2
+                        }
+                    },
+                    {
+                        "id": "forest-layer",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "landcover",  // 🌲 Forests Layer
+                        "paint": {
+                            "fill-color": "#6aeb86",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "water",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "water",  // water Layer
+                        "paint": {
+                            "fill-color": "#64B5F6",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "landuse",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "landuse",  // human Layer
+                        "paint": {
+                            "fill-color": "#FFD54F",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "landcover",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "landcover",  // land Layer
+                        "paint": {
+                            "fill-color": "#e0ddb8",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "place",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "place",  // sted Layer
+                        "paint": {
+                            "fill-color": "#AB47BC",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "building",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "building",  // bygning Layer
+                        "paint": {
+                            "fill-color": "#A1887F",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "transportation_name",
+                        "type": "symbol",
+                        "source": "custom-tiles",
+                        "source-layer": "transportation_name",  // navn på veier Layer
+                        "layout": {
+                            "text-field": ["coalesce", "{ref}", "{name}"],  // This assumes your data contains a "name" field for roads
+                            "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],  // You can adjust the font here
+                            "text-size": 12,  // Set the text size
+                            "text-allow-overlap": true,  // Allow text to overlap (optional)
+                            "text-max-width": 8  // Optional: limits the width of the text label
+                        },
+                        "paint": {
+                            "text-color": "#000000",  // Set text color
+                            "text-halo-color": "#FFFFFF",  // Set halo (outline) color
+                            "text-halo-width": 2,  // Set halo width (outline around text)
+                            "text-opacity": 1  // Set opacity of the text
+                        }
+                    },
+                    {
+                        "id": "boundary",
+                        "type": "line",
+                        "source": "custom-tiles",
+                        "source-layer": "boundary",  // grense Layer
+                        "paint": {
+                            "line-color": "#b84600",
+                            "line-width": 0.5
+                        }
+                    }
+                ]
+            },
+            center: [18.9553, 69.6496],  // Tromsø
+            zoom: 10
+        });
+
+        const draw = new MapboxDraw({
+            displayControlsDefault: false,
+
+            styles: [
+                // Points (circle)
+                {
+                    "id": "gl-draw-point",
+                    "type": "circle",
+                    "filter": ["==", "$type", "Point"],
+
+                },
+                // Lines
+                {
+                    "id": "gl-draw-line",
+                    "type": "line",
+                    "filter": ["==", "$type", "LineString"],
+                    "paint": {
+                        "line-color": "#FF0000",   // Red lines
+                        "line-width": 3,           // Thicker lines
+                        "line-dasharray": [0.2, 2] // Optional dashed line style
+                    }
+                },
+                // Polygon fill
+                {
+                    "id": "gl-draw-polygon-fill",
+                    "type": "fill",
+                    "filter": ["==", "$type", "Polygon"],
+                    "paint": {
+                        "fill-color": "#FF0000", // Fill color
+                        "fill-opacity": 0.3      // Fill opacity
+                    }
+                },
+                // Polygon outline
+                {
+                    "id": "gl-draw-polygon-stroke",
+                    "type": "line",
+                    "filter": ["==", "$type", "Polygon"],
+                    "paint": {
+                        "line-color": "#FF0000", // Outline color
+                        "line-width": 2          // Outline width
+                    }
+                }
+            ]
+        });
+        map.addControl(draw);
+
+        const coordinates = document.getElementById('coordinates');
+
+        map.on('draw.create', (e) => {
+            const feature = e.features[0]; // Get the first feature created
+            if (!feature) return;
+
+            // Handle different geometry types
+            let coords = [];
+            if (feature.geometry.type === 'Point') {
+                coords = feature.geometry.coordinates;
+            } else if (feature.geometry.type === 'LineString') {
+                coords = feature.geometry.coordinates;
+            } else if (feature.geometry.type === 'Polygon') {
+                coords = feature.geometry.coordinates[0]; // First ring of polygon
+            }
+
+            if (coords.length > 0) {
+                coordinates.innerHTML = `Coordinates:<br />${coords.map(coord => `Lng: ${coord[0].toFixed(5)}, Lat: ${coord[1].toFixed(5)}`).join('<br />')}`;
+
+                // Optionally, you can display a popup with the coordinates
+                new maplibregl.Popup()
+                    .setLngLat(coords[0]) // Show popup at first coordinate
+                    .setHTML(`<strong>Coordinates:</strong><br>Lng: ${coords[0][0].toFixed(5)}<br>Lat: ${coords[0][1].toFixed(5)}`)
+                    .addTo(map);
+            }
+        });
+
+
+
+
+        document.getElementById("draw-point").addEventListener("click", () => {
+            draw.changeMode("draw_point");
+        });
+        document.getElementById("draw-line").addEventListener("click", () => {
+            draw.changeMode("draw_line_string");
+        });
+        document.getElementById("draw-polygon").addEventListener("click", () => {
+            draw.changeMode("draw_polygon");
+        });
+        document.getElementById("clear-drawings").addEventListener("click", () => {
+            draw.deleteAll();
+            coordinates.innerHTML = '';
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                draw.changeMode("simple_select"); // Ends line drawing
+            }
+        });
+
+    </script>
+</body>
+
+</html>
