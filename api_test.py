@@ -5,10 +5,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 #accidents
-url2 = "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata"
+url = "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata?srti=True"
 #ferry information
-url = "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata/filter/TransitInformation"
-
+url2 = "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata/filter/AbnormalTraffic"
+"""
+Filters:
+• AbnormalTraffic
+• Accident
+• Activity
+• AnimalPresenceObstruction
+• AuthorityOperation
+• Conditions
+• ConstructionWorks
+• DisturbanceActivity
+• EnvironmentalObstruction
+• EquipmentOrSystemFault
+• GeneralInstructionOrMessageToRoadUsers
+• GeneralNetworkManagement
+• GeneralObstruction
+• GenericSituationRecord
+• InfrastructureDamageObstruction
+• MaintenanceWorks
+• NetworkManagement
+• NonWeatherRelatedRoadConditions
+"""
 auth = ("brukernavn", "passord") # i .env fil
 
 API_USERNAME = os.getenv("brukernavn")
