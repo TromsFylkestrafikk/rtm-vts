@@ -71,7 +71,7 @@
                         "maxzoom": 14  // Adjust based on your data
                     }
                 },
-                "glyphs": "https://fonts.googleapis.com/css2?family=Open+Sans&display=swap",
+                "glyphs": "https://fonts.undpgeohub.org/fonts/{fontstack}/{range}.pbf",
                 "layers": [
                     {
                         "id": "roads-layer",
@@ -80,7 +80,7 @@
                         "source-layer": "transportation",  // 🚗 Roads Layer
                         "paint": {
                             "line-color": "#B0BEC5",
-                            "line-width": 2
+                            "line-width": 3
                         }
                     },
                     {
@@ -149,11 +149,12 @@
                         "source": "custom-tiles",
                         "source-layer": "transportation_name",  // navn på veier Layer
                         "layout": {
-                            "text-field": ["coalesce", "{ref}", "{name}"],  // This assumes your data contains a "name" field for roads
-                            "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],  // You can adjust the font here
+                            "text-field": ["get", "name"],  // This assumes your data contains a "name" field for roads
+                            "text-font": ['Roboto Regular'],  // You can adjust the font here
                             "text-size": 12,  // Set the text size
-                            "text-allow-overlap": true,  // Allow text to overlap (optional)
-                            "text-max-width": 8  // Optional: limits the width of the text label
+                            "text-allow-overlap": false,  // Allow text to overlap (optional)
+                            "text-max-width": 8,  // Optional: limits the width of the text label
+                            "symbol-spacing": 500
                         },
                         "paint": {
                             "text-color": "#000000",  // Set text color
