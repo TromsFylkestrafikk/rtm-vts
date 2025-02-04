@@ -5,7 +5,10 @@ Access datex-node at NRPA:
 2. Get api key:
 -   Install python-dotenv via terminal (make sure you are in venv):
 -   pip install python-dotenv
--   The api key/API Read Access Token is found in the email.
+-   username/password is found in the email.
 3.  Make an ".env" file, and write:
--   brukernavn=gitt brukernavn
--   passord= gitt passord
+-   brukernavn="angitt brukernavn"
+-   passord="angitt passord"
+
+Populate the database with ferries:
+python manage.py get_transit_info.py
