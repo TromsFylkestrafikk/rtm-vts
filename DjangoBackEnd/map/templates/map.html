@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapLibre with Custom Tile Server</title>
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css">
+    <style>
+        body,
+        html {
+            margin: 0;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                "version": 8,
+                "sources": {
+                    "custom-tiles": {
+                        "type": "vector",
+                        "tiles": ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"],  // ✅ Corrected URL
+                        "minzoom": 0,
+                        "maxzoom": 14  // Adjust based on your data
+                    }
+                },
+                "layers": [
+                    {
+                        "id": "roads-layer",
+                        "type": "line",
+                        "source": "custom-tiles",
+                        "source-layer": "transportation",  // 🚗 Roads Layer
+                        "paint": {
+                            "line-color": "#B0BEC5",
+                            "line-width": 2
+                        }
+                    },
+                    {
+                        "id": "forest-layer",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "landcover",  // 🌲 Forests Layer
+                        "paint": {
+                            "fill-color": "#6aeb86",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "water",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "water",  // water Layer
+                        "paint": {
+                            "fill-color": "#64B5F6",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "landuse",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "landuse",  // human Layer
+                        "paint": {
+                            "fill-color": "#FFD54F",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "landcover",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "landcover",  // land Layer
+                        "paint": {
+                            "fill-color": "#e0ddb8",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "place",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "place",  // sted Layer
+                        "paint": {
+                            "fill-color": "#AB47BC",
+                            "fill-opacity": 0.5
+                        }
+                    },
+                    {
+                        "id": "building",
+                        "type": "fill",
+                        "source": "custom-tiles",
+                        "source-layer": "building",  // bygning Layer
+                        "paint": {
+                            "fill-color": "#A1887F",
+                            "fill-opacity": 0.5
+                        }
+                    }
+                ]
+            },
+            center: [18.9553, 69.6496],  // Tromsø
+            zoom: 10
+        });
+
+        // Debug: Log available layers
+        map.on('load', function () {
+            console.log("Map style loaded. Available layers:", map.getStyle().layers);
+        });
+
+    </script>
+</body>
+
+</html>
