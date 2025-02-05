@@ -65,9 +65,9 @@
                 "sources": {
                     "custom-tiles": {
                         "type": "vector",
-                        "tiles": ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"], 
+                        "tiles": ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"],
                         "minzoom": 0,
-                        "maxzoom": 14  
+                        "maxzoom": 14
                     }
                 },
                 "glyphs": "https://fonts.undpgeohub.org/fonts/{fontstack}/{range}.pbf",
@@ -124,12 +124,22 @@
                     },
                     {
                         "id": "place",
-                        "type": "fill",
+                        "type": "symbol",
                         "source": "custom-tiles",
                         "source-layer": "place",  // sted Layer
+                        "layout": {
+                            "text-field": ["get", "name"],
+                            "text-font": ['Roboto Regular'],
+                            "text-size": 12,
+                            "text-allow-overlap": false,
+                            "text-max-width": 8,
+                            "symbol-spacing": 500
+                        },
                         "paint": {
-                            "fill-color": "#AB47BC",
-                            "fill-opacity": 0.5
+                            "text-color": "#000000",
+                            "text-halo-color": "#FFFFFF",
+                            "text-halo-width": 2,
+                            "text-opacity": 1
                         }
                     },
                     {
@@ -148,18 +158,18 @@
                         "source": "custom-tiles",
                         "source-layer": "transportation_name",  // navn på veier Layer
                         "layout": {
-                            "text-field": ["get", "name"], 
-                            "text-font": ['Roboto Regular'],  
-                            "text-size": 12, 
-                            "text-allow-overlap": false,  
-                            "text-max-width": 8,  
+                            "text-field": ["get", "name"],
+                            "text-font": ['Roboto Regular'],
+                            "text-size": 12,
+                            "text-allow-overlap": false,
+                            "text-max-width": 8,
                             "symbol-spacing": 500
                         },
                         "paint": {
-                            "text-color": "#000000",  
-                            "text-halo-color": "#FFFFFF", 
-                            "text-halo-width": 2,  
-                            "text-opacity": 1  
+                            "text-color": "#000000",
+                            "text-halo-color": "#FFFFFF",
+                            "text-halo-width": 2,
+                            "text-opacity": 1
                         }
                     },
                     {
@@ -193,9 +203,9 @@
                     "type": "line",
                     "filter": ["==", "$type", "LineString"],
                     "paint": {
-                        "line-color": "#FF0000",   
-                        "line-width": 3,           
-                        "line-dasharray": [0.2, 2] 
+                        "line-color": "#FF0000",
+                        "line-width": 3,
+                        "line-dasharray": [0.2, 2]
                     }
                 },
                 {
@@ -204,7 +214,7 @@
                     "filter": ["==", "$type", "Polygon"],
                     "paint": {
                         "fill-color": "#FF0000",
-                        "fill-opacity": 0.3     
+                        "fill-opacity": 0.3
                     }
                 },
                 {
@@ -213,7 +223,7 @@
                     "filter": ["==", "$type", "Polygon"],
                     "paint": {
                         "line-color": "#FF0000",
-                        "line-width": 2          
+                        "line-width": 2
                     }
                 }
             ]
@@ -223,7 +233,7 @@
         const coordinates = document.getElementById('coordinates');
 
         map.on('draw.create', (e) => {
-            const feature = e.features[0]; 
+            const feature = e.features[0];
             if (!feature) return;
 
             let coords = [];
@@ -264,9 +274,42 @@
 
         document.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
-                draw.changeMode("simple_select"); 
+                draw.changeMode("simple_select");
             }
         });
+
+        fetch("http://127.0.0.1:8000/api/locations/")
+            .then(response => response.json())
+            .then(data => {
+                map.addSource("locations", {
+                    "type": "geojson",
+                    "data": data
+                });
+
+                map.addLayer({
+                    "id": "locations-layer",
+                    "type": "circle",
+                    "source": "locations",
+                    "paint": {
+                        "circle-radius": 6,
+                        "circle-color": "#FF0000"  // Red color
+                    }
+                });
+
+                // Add popups on click
+                map.on('click', 'locations-layer', function (e) {
+                    const coordinates = e.features[0].geometry.coordinates.slice();
+                    const name = e.features[0].properties.name;
+                    const description = e.features[0].properties.description || "No description available.";
+
+                    new maplibregl.Popup()
+                        .setLngLat(coordinates)
+                        .setHTML(`<strong>${name}</strong><p>${description}</p>`)
+                        .addTo(map);
+                });
+            });
+
+
 
     </script>
 </body>
