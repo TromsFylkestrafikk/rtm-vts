@@ -11,4 +11,4 @@ Access datex-node at NRPA:
 -   passord="angitt passord"
 
 Populate the database with ferries:
-python manage.py get_transit_info.py
+python manage.py get_transit_info
