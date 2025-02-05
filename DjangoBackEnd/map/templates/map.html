@@ -281,9 +281,16 @@
         fetch("http://127.0.0.1:8000/api/locations/")
             .then(response => response.json())
             .then(data => {
+                // Check the data structure
+                console.log(data);
+
+                // Add the locations (points) to the map
                 map.addSource("locations", {
                     "type": "geojson",
-                    "data": data
+                    "data": {
+                        "type": "FeatureCollection",
+                        "features": data.features.filter(f => f.geometry.type === "Point")  // Filter only points
+                    }
                 });
 
                 map.addLayer({
@@ -292,24 +299,61 @@
                     "source": "locations",
                     "paint": {
                         "circle-radius": 6,
-                        "circle-color": "#FF0000"  // Red color
+                        "circle-color": "#FF0000"  // Red color for the points
                     }
                 });
 
-                // Add popups on click
+                // Add popups on click for points
                 map.on('click', 'locations-layer', function (e) {
                     const coordinates = e.features[0].geometry.coordinates.slice();
                     const name = e.features[0].properties.name;
                     const description = e.features[0].properties.description || "No description available.";
 
                     new maplibregl.Popup()
-                        .setLngLat(coordinates)
+                        .setLngLat(coordinates)  // Correct the coordinates order for popup
                         .setHTML(`<strong>${name}</strong><p>${description}</p>`)
                         .addTo(map);
                 });
+
+                // Extract the line coordinates (make sure it's the correct feature)
+                const lineFeature = data.features.find(f => f.geometry.type === "LineString");
+
+                if (lineFeature) {
+                    const lineCoordinates = lineFeature.geometry.coordinates;
+
+                    // Add the line directly from the response, without filtering it
+                    map.addSource("line", {
+                        "type": "geojson",
+                        "data": {
+                            "type": "FeatureCollection",
+                            "features": [lineFeature]  // Only the line feature
+                        }
+                    });
+
+                    map.addLayer({
+                        "id": "line-layer",
+                        "type": "line",
+                        "source": "line",
+                        "paint": {
+                            "line-color": "#FF0000",  // Red color for the line
+                            "line-width": 4
+                        }
+                    });
+
+                    // Optional: Automatically zoom and center the map to fit the line
+                    const bounds = new maplibregl.LngLatBounds();
+                    lineCoordinates.forEach(coord => {
+                        bounds.extend(coord);
+                    });
+
+                    // Fit map bounds to the line
+                    map.fitBounds(bounds, {
+                        padding: 20
+                    });
+                } else {
+                    console.error("Line feature not found in GeoJSON data.");
+                }
             });
-
-
 
     </script>
 </body>
