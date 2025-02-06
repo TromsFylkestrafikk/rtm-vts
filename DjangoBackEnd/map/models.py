@@ -20,7 +20,7 @@ class TransitInformation(models.Model):
     Transit Service Information: Values like loadCapacityChanged, serviceSuspended.
     Transit Service Type: Values like ferry.
     """
-    situation_id = models.CharField(max_length=255)
+    situation_id = models.CharField(max_length=255, unique=True)
     version = models.CharField(max_length=255)
     creation_time = models.DateTimeField(default=timezone.now)
     version_time = models.DateTimeField(null=True, blank=True)
@@ -39,6 +39,8 @@ class TransitInformation(models.Model):
     road_number = models.CharField(max_length=255, null=True, blank=True)
     transit_service_information = models.TextField(null=True, blank=True)
     transit_service_type = models.CharField(max_length=255, null=True, blank=True)
+    pos_list_raw = models.TextField(null=True, blank=True, help_text="Raw posList string from XML")
+    pos_list_coords = models.TextField(null=True, blank=True, help_text="Parsed posList as JSON")
 
     def __str__(self):
         return f"{self.road_number} - {self.transit_service_type} ({self.transit_service_information})"

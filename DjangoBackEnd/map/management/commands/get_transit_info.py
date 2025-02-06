@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 import django
+import json
 import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand
 from django.utils.dateparse import parse_datetime
@@ -20,7 +21,7 @@ class Command(BaseCommand):
     help = "Fetch transit information and store it in the database"
 
     def handle(self, *args, **kwargs):
-        url = f"{BaseURL}datexapi/GetSituation/pullsnapshotdata/filter/TransitInformation"
+        url = f"{BaseURL}datexapi/GetSituation/pullsnapshotdata/"
         response = requests.get(url, auth=(UserName_DATEX, Password_DATEX))
 
         if response.status_code == 200:
@@ -29,7 +30,6 @@ class Command(BaseCommand):
             except ET.ParseError as e:
                 logger.error(f"Error parsing XML: {e}")
                 return
-
             # Define namespaces
             namespaces = {
                 "ns2": "http://datex2.eu/schema/3/messageContainer",
@@ -78,37 +78,53 @@ class Command(BaseCommand):
                     longitude = location_reference.findtext(".//ns8:longitude", namespaces=namespaces) if location_reference is not None else None
                     location_description = location_reference.findtext(".//ns8:locationDescription/common:values/common:value", namespaces=namespaces) if location_reference is not None else None
                     road_number = location_reference.findtext(".//ns8:roadInformation/ns8:roadNumber", namespaces=namespaces) if location_reference is not None else None
+                    # Extract posList data
+                    pos_list_raw = None
+                    pos_list_coords = None
+                    gml_line_string = location_reference.find(".//ns8:gmlLineString", namespaces=namespaces) if location_reference is not None else None
+                    if gml_line_string is not None:
+                        pos_list_raw = gml_line_string.findtext("ns8:posList", namespaces=namespaces)
+                        if pos_list_raw:
+                            # Parse the posList into coordinate pairs
+                            coords = list(map(float, pos_list_raw.strip().split()))
+                            positions = list(zip(coords[::2], coords[1::2]))
+                            # Store positions as JSON string
+                            pos_list_coords = json.dumps(positions)
 
                     # Extract transit service information
                     transit_service_information = situation.findtext("ns12:transitServiceInformation", namespaces=namespaces)
                     transit_service_type = situation.findtext("ns12:transitServiceType", namespaces=namespaces)
 
                     # Create and save the TransitInformation object
-                    TransitInformation.objects.create(
+                    TransitInformation.objects.update_or_create(
                         situation_id=situation_id,
-                        version=version,
-                        creation_time=creation_time or timezone.now(),
-                        version_time=version_time,
-                        probability_of_occurrence=probability_of_occurrence,
-                        severity=severity,
-                        source_country=source_country,
-                        source_identification=source_identification,
-                        source_name=source_name,
-                        source_type=source_type,
-                        validity_status=validity_status,
-                        overall_start_time=overall_start_time,
-                        overall_end_time=overall_end_time,
-                        latitude=self.to_float(latitude),
-                        longitude=self.to_float(longitude),
-                        location_description=location_description,
-                        road_number=road_number,
-                        transit_service_information=transit_service_information,
-                        transit_service_type=transit_service_type,
+                        defaults={
+                            'version': version,
+                            'creation_time': creation_time or timezone.now(),
+                            'version_time': version_time,
+                            'probability_of_occurrence': probability_of_occurrence,
+                            'severity': severity,
+                            'source_country': source_country,
+                            'source_identification': source_identification,
+                            'source_name': source_name,
+                            'source_type': source_type,
+                            'validity_status': validity_status,
+                            'overall_start_time': overall_start_time,
+                            'overall_end_time': overall_end_time,
+                            'latitude': self.to_float(latitude),
+                            'longitude': self.to_float(longitude),
+                            'location_description': location_description,
+                            'road_number': road_number,
+                            'transit_service_information': transit_service_information,
+                            'transit_service_type': transit_service_type,
+                            'pos_list_raw': pos_list_raw,
+                            'pos_list_coords': pos_list_coords,
+                        }
                     )
                     logger.info(f"Stored: {situation_id} ({latitude}, {longitude})")
 
                 except Exception as e:
-                    logger.error(f"Error processing situation record ID {situation_id}: {e}")
+                    logger.exception(f"Error processing situation record ID {situation_id}: {e}")
 
             logger.info("Successfully stored all transit data!")
         else:
