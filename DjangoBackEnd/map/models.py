@@ -1,6 +1,13 @@
 from django.db import models
 from django.utils import timezone
 
+class ApiMetadata(models.Model):
+    key = models.CharField(max_length=255, unique=True)
+    value = models.TextField()
+
+    def __str__(self):
+        return f"{self.key}: {self.value}"
+
 class TransitInformation(models.Model):
     """
     Field Values: Each row contains values for all the fields defined in your TransitInformation model:
@@ -37,10 +44,12 @@ class TransitInformation(models.Model):
     longitude = models.FloatField(null=True, blank=True)
     location_description = models.TextField(null=True, blank=True)
     road_number = models.CharField(max_length=255, null=True, blank=True)
+    area_name = models.CharField(max_length=255, null=True, blank=True)
     transit_service_information = models.TextField(null=True, blank=True)
     transit_service_type = models.CharField(max_length=255, null=True, blank=True)
     pos_list_raw = models.TextField(null=True, blank=True, help_text="Raw posList string from XML")
     pos_list_coords = models.TextField(null=True, blank=True, help_text="Parsed posList as JSON")
+    comment = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.road_number} - {self.transit_service_type} ({self.transit_service_information})"

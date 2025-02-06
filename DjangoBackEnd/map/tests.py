@@ -42,6 +42,7 @@ class FetchTransitInformationTest(TestCase):
             </payloadPublication>
         </d2LogicalModel>
         """  # Your test XML data
+        mock_response.headers = {'Last-Modified': 'Wed, 21 Oct 2020 07:28:00 GMT'}
         mock_get.return_value = mock_response
         # Run your management command
         call_command('get_transit_info')

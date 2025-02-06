@@ -6,7 +6,7 @@ import json
 import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand
 from django.utils.dateparse import parse_datetime
-from map.models import TransitInformation
+from map.models import TransitInformation, ApiMetadata
 from config import UserName_DATEX, Password_DATEX
 from django.utils import timezone
 
@@ -17,12 +17,24 @@ django.setup()
 BaseURL = "https://datex-server-get-v3-1.atlas.vegvesen.no/"
 logger = logging.getLogger(__name__)
 
+"""
+This script does an API call to VTS, and stores the information 
+"""
+
 class Command(BaseCommand):
     help = "Fetch transit information and store it in the database"
 
     def handle(self, *args, **kwargs):
         url = f"{BaseURL}datexapi/GetSituation/pullsnapshotdata/"
-        response = requests.get(url, auth=(UserName_DATEX, Password_DATEX))
+        # Retrieve the last modified date from the database
+        last_modified_entry = ApiMetadata.objects.filter(key='last_modified_date').first()
+        headers = {}
+        if last_modified_entry:
+            last_modified_date = last_modified_entry.value
+            headers['If-Modified-Since'] = last_modified_date
+            logger.info(f"Using If-Modified-Since header: {last_modified_date}")
+        # Prepare headers with If-Modified-Since if available
+        response = requests.get(url, auth=(UserName_DATEX, Password_DATEX), headers=headers)
 
         if response.status_code == 200:
             try:
@@ -78,6 +90,13 @@ class Command(BaseCommand):
                     longitude = location_reference.findtext(".//ns8:longitude", namespaces=namespaces) if location_reference is not None else None
                     location_description = location_reference.findtext(".//ns8:locationDescription/common:values/common:value", namespaces=namespaces) if location_reference is not None else None
                     road_number = location_reference.findtext(".//ns8:roadInformation/ns8:roadNumber", namespaces=namespaces) if location_reference is not None else None
+                    area_name = None
+                    if location_reference is not None:
+                        area_name_element = location_reference.find(".//ns8:areaName", namespaces=namespaces)
+                        if area_name_element is not None:
+                            area_name_values = area_name_element.findall("common:values/common:value", namespaces=namespaces)
+                            area_name_texts = [v.text for v in area_name_values if v.text]
+                            area_name = ' '.join(area_name_texts) if area_name_texts else None
                     # Extract posList data
                     pos_list_raw = None
                     pos_list_coords = None
@@ -94,7 +113,13 @@ class Command(BaseCommand):
                     # Extract transit service information
                     transit_service_information = situation.findtext("ns12:transitServiceInformation", namespaces=namespaces)
                     transit_service_type = situation.findtext("ns12:transitServiceType", namespaces=namespaces)
-
+                    # Extract comment
+                    comment = None
+                    general_public_comment = situation.find("ns12:generalPublicComment", namespaces)
+                    if general_public_comment is not None:
+                        comment_values = general_public_comment.findall(".//common:value", namespaces)
+                        comments = [cv.text for cv in comment_values if cv.text]
+                        comment = ' '.join(comments) if comments else None
                     # Create and save the TransitInformation object
                     TransitInformation.objects.update_or_create(
                         situation_id=situation_id,
@@ -115,18 +140,32 @@ class Command(BaseCommand):
                             'longitude': self.to_float(longitude),
                             'location_description': location_description,
                             'road_number': road_number,
+                            'area_name': area_name,
                             'transit_service_information': transit_service_information,
                             'transit_service_type': transit_service_type,
                             'pos_list_raw': pos_list_raw,
                             'pos_list_coords': pos_list_coords,
+                            'comment': comment,
                         }
                     )
                     logger.info(f"Stored: {situation_id} ({latitude}, {longitude})")
 
                 except Exception as e:
                     logger.exception(f"Error processing situation record ID {situation_id}: {e}")
-
+            # After processing, get the Last-Modified header and save it
+            last_modified = response.headers.get('Last-Modified')
+            if last_modified:
+                # Save or update the last modified date in the database
+                ApiMetadata.objects.update_or_create(
+                    key='last_modified_date',
+                    defaults={'value': last_modified}
+                )
+                logger.info(f"Saved Last-Modified date: {last_modified}")
+            else:
+                logger.warning("No Last-Modified header found in the response.")    
             logger.info("Successfully stored all transit data!")
+        elif response.status_code == 304:
+            logger.info("data not modified")
         else:
             logger.error(f"Error fetching data: HTTP {response.status_code}")
 
