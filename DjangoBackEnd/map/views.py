@@ -105,7 +105,8 @@ def location_geojson(request):
                 "properties": {
                     "id": location.id,
                     "name": location.situation_id,
-                    "description": location.location_description
+                    "description": location.location_description,
+                    "severity" : location.severity
                 }
             })
 
@@ -135,7 +136,8 @@ def location_geojson(request):
                         "properties": {
                             "id": location.id,
                             "name": location.situation_id,
-                            "description": location.location_description
+                            "description": location.location_description,
+                            "severity" : location.severity
                         }
                     })
 
