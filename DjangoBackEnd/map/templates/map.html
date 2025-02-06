@@ -42,6 +42,31 @@
             font-family: Arial, sans-serif;
             z-index: 999;
         }
+
+        #sidebar {
+            position: absolute;
+            top: 52px;
+            left: 10px;
+            width: 250px;
+            height: 400px;
+            background: white;
+            overflow-y: auto;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        #transit-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        #transit-list li {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
     </style>
 </head>
 
@@ -54,7 +79,11 @@
     </div>
 
     <pre id="coordinates" class="coordinates"></pre>
-
+    
+    <div id="sidebar">
+        <h3>Transit Information</h3>
+        <ul id="transit-list"></ul>  List of transit items 
+    </div>
 
     <div id="map"></div>
     <script>
@@ -278,18 +307,33 @@
             }
         });
 
+        document.addEventListener('DOMContentLoaded', function () {
         fetch("http://127.0.0.1:8000/api/locations/")
             .then(response => response.json())
             .then(data => {
-                // Check the data structure
-                console.log(data);
+                console.log("GeoJSON Data:", data);
 
-                // Add the locations (points) to the map
+                const transitList = document.getElementById("transit-list");
+
+                if (!transitList) {
+                    console.error("❌ 'transit-list' element not found in the document!");
+                    return;
+                }
+
+                // Clear existing items in the list
+                transitList.innerHTML = "";
+
+                // 🔹 ADD POINT LOCATIONS
+                if (map.getSource("locations")) {
+                    map.removeLayer("locations-layer");
+                    map.removeSource("locations");
+                }
+
                 map.addSource("locations", {
                     "type": "geojson",
                     "data": {
                         "type": "FeatureCollection",
-                        "features": data.features.filter(f => f.geometry.type === "Point")  // Filter only points
+                        "features": data.features.filter(f => f.geometry.type === "Point")
                     }
                 });
 
@@ -299,62 +343,81 @@
                     "source": "locations",
                     "paint": {
                         "circle-radius": 6,
-                        "circle-color": "#FF0000"  // Red color for the points
+                        "circle-color": "#FF0000"
                     }
                 });
 
-                // Add popups on click for points
+                // 🔹 ADD POPUPS ON CLICK
                 map.on('click', 'locations-layer', function (e) {
                     const coordinates = e.features[0].geometry.coordinates.slice();
                     const name = e.features[0].properties.name;
                     const description = e.features[0].properties.description || "No description available.";
 
                     new maplibregl.Popup()
-                        .setLngLat(coordinates)  // Correct the coordinates order for popup
+                        .setLngLat(coordinates)
                         .setHTML(`<strong>${name}</strong><p>${description}</p>`)
                         .addTo(map);
                 });
 
-                // Extract the line coordinates (make sure it's the correct feature)
-                const lineFeature = data.features.find(f => f.geometry.type === "LineString");
+                // 🔹 ADD CHECKBOXES FOR TRANSIT LIST
+                data.transit_list.forEach(item => {
+                    const listItem = document.createElement("li");
 
-                if (lineFeature) {
-                    const lineCoordinates = lineFeature.geometry.coordinates;
+                    const label = document.createElement("label");
+                    label.textContent = item.name;
 
-                    // Add the line directly from the response, without filtering it
-                    map.addSource("line", {
-                        "type": "geojson",
-                        "data": {
-                            "type": "FeatureCollection",
-                            "features": [lineFeature]  // Only the line feature
-                        }
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.checked = true;
+                    checkbox.addEventListener("change", () => {
+                        togglePointVisibility(item.id, checkbox.checked);
                     });
 
-                    map.addLayer({
-                        "id": "line-layer",
-                        "type": "line",
-                        "source": "line",
-                        "paint": {
-                            "line-color": "#FF0000",  // Red color for the line
-                            "line-width": 4
-                        }
-                    });
+                    listItem.appendChild(label);
+                    listItem.appendChild(checkbox);
+                    transitList.appendChild(listItem);
+                });
 
-                    // Optional: Automatically zoom and center the map to fit the line
-                    const bounds = new maplibregl.LngLatBounds();
-                    lineCoordinates.forEach(coord => {
-                        bounds.extend(coord);
-                    });
+                // 🔹 FIND ALL LINESTRING FEATURES
+                const lineFeatures = data.features.filter(f => f.geometry.type === "LineString");
 
-                    // Fit map bounds to the line
-                    map.fitBounds(bounds, {
-                        padding: 20
-                    });
-                } else {
-                    console.error("Line feature not found in GeoJSON data.");
+                if (lineFeatures.length === 0) {
+                    console.error("❌ No LineString features found!");
+                    return;
                 }
-            });
 
+                console.log(`✅ Found ${lineFeatures.length} LineString features!`, lineFeatures);
+
+                // 🔹 REMOVE OLD LINE LAYER IF IT EXISTS
+                if (map.getSource("line")) {
+                    map.removeLayer("line-layer");
+                    map.removeSource("line");
+                }
+
+                // 🔹 ADD NEW LINE SOURCE
+                map.addSource("line", {
+                    "type": "geojson",
+                    "data": {
+                        "type": "FeatureCollection",
+                        "features": lineFeatures
+                    }
+                });
+
+                // 🔹 ADD LINE LAYER
+                map.addLayer({
+                    "id": "line-layer",
+                    "type": "line",
+                    "source": "line",
+                    "paint": {
+                        "line-color": "#FF0000",
+                        "line-width": 4
+                    }
+                });
+
+                console.log("✅ Line layer added successfully!");
+            })
+            .catch(error => console.error("❌ Error fetching locations:", error));
+        });
     </script>
 </body>
 
