@@ -79,10 +79,10 @@
     </div>
 
     <pre id="coordinates" class="coordinates"></pre>
-    
+
     <div id="sidebar">
         <h3>Transit Information</h3>
-        <ul id="transit-list"></ul>  List of transit items 
+        <ul id="transit-list"></ul> List of transit items
     </div>
 
     <div id="map"></div>
@@ -308,116 +308,143 @@
         });
 
         document.addEventListener('DOMContentLoaded', function () {
-        fetch("http://127.0.0.1:8000/api/locations/")
-            .then(response => response.json())
-            .then(data => {
-                console.log("GeoJSON Data:", data);
+            fetch("http://127.0.0.1:8000/api/locations/")
+                .then(response => response.json())
+                .then(data => {
+                    console.log("GeoJSON Data:", data);
 
-                const transitList = document.getElementById("transit-list");
+                    const transitList = document.getElementById("transit-list");
 
-                if (!transitList) {
-                    console.error("❌ 'transit-list' element not found in the document!");
-                    return;
-                }
-
-                // Clear existing items in the list
-                transitList.innerHTML = "";
-
-                // 🔹 ADD POINT LOCATIONS
-                if (map.getSource("locations")) {
-                    map.removeLayer("locations-layer");
-                    map.removeSource("locations");
-                }
-
-                map.addSource("locations", {
-                    "type": "geojson",
-                    "data": {
-                        "type": "FeatureCollection",
-                        "features": data.features.filter(f => f.geometry.type === "Point")
+                    if (!transitList) {
+                        console.error("❌ 'transit-list' element not found in the document!");
+                        return;
                     }
-                });
 
-                map.addLayer({
-                    "id": "locations-layer",
-                    "type": "circle",
-                    "source": "locations",
-                    "paint": {
-                        "circle-radius": 6,
-                        "circle-color": "#FF0000"
+                    // Clear existing items in the list
+                    transitList.innerHTML = "";
+
+                    // 🔹 ADD POINT LOCATIONS
+                    if (map.getSource("locations")) {
+                        map.removeLayer("locations-layer");
+                        map.removeSource("locations");
                     }
-                });
 
-                // 🔹 ADD POPUPS ON CLICK
-                map.on('click', 'locations-layer', function (e) {
-                    const coordinates = e.features[0].geometry.coordinates.slice();
-                    const name = e.features[0].properties.name;
-                    const description = e.features[0].properties.description || "No description available.";
-
-                    new maplibregl.Popup()
-                        .setLngLat(coordinates)
-                        .setHTML(`<strong>${name}</strong><p>${description}</p>`)
-                        .addTo(map);
-                });
-
-                // 🔹 ADD CHECKBOXES FOR TRANSIT LIST
-                data.transit_list.forEach(item => {
-                    const listItem = document.createElement("li");
-
-                    const label = document.createElement("label");
-                    label.textContent = item.name;
-
-                    const checkbox = document.createElement("input");
-                    checkbox.type = "checkbox";
-                    checkbox.checked = true;
-                    checkbox.addEventListener("change", () => {
-                        togglePointVisibility(item.id, checkbox.checked);
+                    // Add severity-based coloring for points
+                    map.addSource("locations", {
+                        "type": "geojson",
+                        "data": {
+                            "type": "FeatureCollection",
+                            "features": data.features.filter(f => f.geometry.type === "Point")
+                        }
                     });
 
-                    listItem.appendChild(label);
-                    listItem.appendChild(checkbox);
-                    transitList.appendChild(listItem);
-                });
+                    map.addLayer({
+                        "id": "locations-layer",
+                        "type": "circle",
+                        "source": "locations",
+                        "paint": {
+                            "circle-radius": 6,
+                            "circle-color": [
+                                'match',
+                                ['get', 'severity'],
+                                'none', '#B0BEC5',  // Light Grey for 'none'
+                                'low', '#FFFF00',    // Yellow for 'low'
+                                'high', '#FFA500',   // Orange for 'high'
+                                'highest', '#FF0000',// Red for 'highest'
+                                'unknown', '#808080',// Gray for 'unknown'
+                                '#0000FF'            // Default Blue if no severity matches
+                            ]
+                        }
+                    });
 
-                // 🔹 FIND ALL LINESTRING FEATURES
-                const lineFeatures = data.features.filter(f => f.geometry.type === "LineString");
+                    // 🔹 ADD POPUPS ON CLICK
+                    map.on('click', 'locations-layer', function (e) {
+                        const coordinates = e.features[0].geometry.coordinates.slice();
+                        const name = e.features[0].properties.name;
+                        const description = e.features[0].properties.description || "No description available.";
+                        const severity = e.features[0].properties.severity || "Unknown";
 
-                if (lineFeatures.length === 0) {
-                    console.error("❌ No LineString features found!");
-                    return;
-                }
+                        new maplibregl.Popup()
+                            .setLngLat(coordinates)
+                            .setHTML(`
+                                <div style="font-family: Arial, sans-serif; padding: 10px; max-width: 200px;">
+                                    <h3 style="margin: 0; font-size: 18px;">${name}</h3>
+                                    <p style="margin: 5px 0;">${description}</p>
+                                    <p style="margin: 5px 0;"><strong>Severity:</strong> ${severity}</p>
+                                </div>
+                            `)
+                            .addTo(map);
+                    });
 
-                console.log(`✅ Found ${lineFeatures.length} LineString features!`, lineFeatures);
+                    // 🔹 ADD CHECKBOXES FOR TRANSIT LIST
+                    data.transit_list.forEach(item => {
+                        const listItem = document.createElement("li");
 
-                // 🔹 REMOVE OLD LINE LAYER IF IT EXISTS
-                if (map.getSource("line")) {
-                    map.removeLayer("line-layer");
-                    map.removeSource("line");
-                }
+                        const label = document.createElement("label");
+                        label.textContent = item.name;
 
-                // 🔹 ADD NEW LINE SOURCE
-                map.addSource("line", {
-                    "type": "geojson",
-                    "data": {
-                        "type": "FeatureCollection",
-                        "features": lineFeatures
+                        const checkbox = document.createElement("input");
+                        checkbox.type = "checkbox";
+                        checkbox.checked = true;
+                        checkbox.addEventListener("change", () => {
+                            togglePointVisibility(item.id, checkbox.checked);
+                        });
+
+                        listItem.appendChild(label);
+                        listItem.appendChild(checkbox);
+                        transitList.appendChild(listItem);
+                    });
+
+                    // 🔹 FIND ALL LINESTRING FEATURES
+                    const lineFeatures = data.features.filter(f => f.geometry.type === "LineString");
+
+                    if (lineFeatures.length === 0) {
+                        console.error("❌ No LineString features found!");
+                        return;
                     }
-                });
 
-                // 🔹 ADD LINE LAYER
-                map.addLayer({
-                    "id": "line-layer",
-                    "type": "line",
-                    "source": "line",
-                    "paint": {
-                        "line-color": "#FF0000",
-                        "line-width": 4
+                    console.log(`✅ Found ${lineFeatures.length} LineString features!`, lineFeatures);
+
+                    // 🔹 REMOVE OLD LINE LAYER IF IT EXISTS
+                    if (map.getSource("line")) {
+                        map.removeLayer("line-layer");
+                        map.removeSource("line");
                     }
-                });
 
-                console.log("✅ Line layer added successfully!");
-            })
-            .catch(error => console.error("❌ Error fetching locations:", error));
+                    // Add severity-based coloring for lines
+                    map.addSource("line", {
+                        "type": "geojson",
+                        "data": {
+                            "type": "FeatureCollection",
+                            "features": lineFeatures
+                        }
+                    });
+
+                    map.addLayer({
+                        "id": "line-layer",
+                        "type": "line",
+                        "source": "line",
+                        "paint": {
+                            "line-color": [
+                                'match',
+                                ['get', 'severity'],
+                                'none', '#B0BEC5',  // Light Grey for 'none'
+                                'low', '#FFFF00',    // Yellow for 'low'
+                                'high', '#FFA500',   // Orange for 'high'
+                                'highest', '#FF0000',// Red for 'highest'
+                                'unknown', '#808080',// Gray for 'unknown'
+                                '#0000FF'            // Default Blue if no severity matches
+                            ],
+                            "line-width": 4
+                        }
+                    });
+
+                    console.log("✅ Line layer added successfully!");
+                })
+                .catch(error => console.error("❌ Error fetching locations:", error));
         });
+
+
     </script>
 </body>
 
