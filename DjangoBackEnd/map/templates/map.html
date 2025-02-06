@@ -80,6 +80,13 @@
 
     <pre id="coordinates" class="coordinates"></pre>
 
+    <div id="county-selector">
+        <select id="county-dropdown">
+            <option value="">Select County</option>
+            <!-- Dynamic options will be added here -->
+        </select>
+    </div>
+
     <div id="sidebar">
         <h3>Transit Information</h3>
         <ul id="transit-list"></ul> List of transit items
@@ -260,6 +267,92 @@
         map.addControl(draw);
 
         const coordinates = document.getElementById('coordinates');
+        function addPointLayer(data, selectedCounty) {
+            // Filter points based on county
+            const filteredPoints = data.features.filter(f => f.geometry.type === "Point" && f.properties?.county?.toLowerCase().includes(selectedCounty.toLowerCase()));
+
+            if (map.getSource("locations")) {
+                map.removeLayer("locations-layer");
+                map.removeSource("locations");
+            }
+
+            map.addSource("locations", {
+                "type": "geojson",
+                "data": {
+                    "type": "FeatureCollection",
+                    "features": filteredPoints
+                }
+            });
+
+            map.addLayer({
+                "id": "locations-layer",
+                "type": "circle",
+                "source": "locations",
+                "paint": {
+                    "circle-radius": 6,
+                    "circle-color": [
+                        'match',
+                        ['get', 'severity'],
+                        'none', '#7e4da3',
+                        'low', '#FFFF00',
+                        'high', '#FFA500',
+                        'highest', '#FF0000',
+                        'unknown', '#808080',
+                        '#0000FF'
+                    ]
+                },
+                "layout": {
+                    "visibility": filteredPoints.length > 0 ? "visible" : "none"  // Set visibility based on filtered points
+                }
+            });
+        }
+
+
+        function addLineLayer(data, selectedCounty) {
+            // Filter lines based on county
+            const filteredLines = data.features.filter(f => f.geometry.type === "LineString" && f.properties?.county?.toLowerCase().includes(selectedCounty.toLowerCase()));
+
+            if (filteredLines.length === 0) {
+                console.error("❌ No LineString features found!");
+                return;
+            }
+
+            if (map.getSource("line")) {
+                map.removeLayer("line-layer");
+                map.removeSource("line");
+            }
+
+            map.addSource("line", {
+                "type": "geojson",
+                "data": {
+                    "type": "FeatureCollection",
+                    "features": filteredLines
+                }
+            });
+
+            map.addLayer({
+                "id": "line-layer",
+                "type": "line",
+                "source": "line",
+                "paint": {
+                    "line-color": [
+                        'match',
+                        ['get', 'severity'],
+                        'none', '#7e4da3',
+                        'low', '#FFFF00',
+                        'high', '#FFA500',
+                        'highest', '#FF0000',
+                        'unknown', '#808080',
+                        '#0000FF'
+                    ],
+                    "line-width": 4
+                },
+                "layout": {
+                    "visibility": filteredLines.length > 0 ? "visible" : "none"  // Set visibility based on filtered lines
+                }
+            });
+        }
+
 
         map.on('draw.create', (e) => {
             const feature = e.features[0];
@@ -307,11 +400,97 @@
             }
         });
 
+        // Adjust this function to toggle individual points' visibility
+        function togglePointVisibility(id, isVisible) {
+            const visibility = isVisible ? 'visible' : 'none';
+            map.setLayoutProperty('locations-layer', 'visibility', visibility);
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             fetch("http://127.0.0.1:8000/api/locations/")
                 .then(response => response.json())
                 .then(data => {
-                    console.log("GeoJSON Data:", data);
+                    console.log("📡 API Response:", data);
+
+                    if (!data || !Array.isArray(data.features)) {
+                        console.error("❌ Unexpected data format:", data);
+                        return;
+                    }
+
+                    const counties = new Set();
+                    data.features.forEach(location => {
+                        if (location.properties && location.properties.county) { // Adjust based on data structure
+                            counties.add(location.properties.county);
+                        }
+                    });
+
+                    const countyDropdown = document.getElementById("county-dropdown");
+                    countyDropdown.innerHTML = '<option value="">Select County</option>'; // Reset
+
+                    counties.forEach(county => {
+                        const option = document.createElement("option");
+                        option.value = county;
+                        option.textContent = county;
+                        countyDropdown.appendChild(option);
+                    });
+
+                    console.log("✅ County dropdown populated.");
+                })
+                .catch(error => console.error("❌ Error fetching locations:", error));
+        });
+
+        document.getElementById("county-dropdown").addEventListener("change", function () {
+            const selectedCounty = this.value;
+
+            if (selectedCounty) {
+                fetch("http://127.0.0.1:8000/api/locations/")
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("📡 API Response:", data);
+
+                        // Filter locations based on selected county
+                        const filteredLocations = data.features.filter(location => {
+                            const areaName = location.properties?.county; // Use correct key
+                            return areaName && areaName.trim().toLowerCase().includes(selectedCounty.trim().toLowerCase());
+                        });
+
+                        console.log(`🚀 Showing data for: ${selectedCounty}`, filteredLocations);
+
+                        if (map.getSource("locations")) {
+                            map.removeLayer("locations-layer");
+                            map.removeSource("locations");
+                        }
+
+                        // Add filtered points
+                        addPointLayer(data, selectedCounty);
+
+                        // Add filtered lines
+                        addLineLayer(data, selectedCounty);
+
+                        // Adjust map view to focus on the selected county
+                        if (filteredLocations.length > 0) {
+                            const firstLocation = filteredLocations[0];
+                            map.flyTo({
+                                center: firstLocation.geometry.coordinates,
+                                zoom: 9
+                            });
+                        } else {
+                            console.warn(`❌ No data found for ${selectedCounty}`);
+                        }
+                    })
+                    .catch(error => console.error("❌ Error fetching data for selected county:", error));
+            }
+        });
+
+
+
+
+
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch("http://127.0.0.1:8000/api/locations/")
+                .then(response => response.json())
+                .then(data => {
+                    console.log("GeoJSON Data:", location.Comment);
 
                     const transitList = document.getElementById("transit-list");
 
@@ -347,13 +526,16 @@
                             "circle-color": [
                                 'match',
                                 ['get', 'severity'],
-                                'none', '#B0BEC5',  // Light Grey for 'none'
+                                'none', '#7e4da3',  // Light Grey for 'none'
                                 'low', '#FFFF00',    // Yellow for 'low'
                                 'high', '#FFA500',   // Orange for 'high'
                                 'highest', '#FF0000',// Red for 'highest'
                                 'unknown', '#808080',// Gray for 'unknown'
                                 '#0000FF'            // Default Blue if no severity matches
                             ]
+                        },
+                        "layout": {
+                            "visibility": "visible"  // Start with the layer hidden
                         }
                     });
 
@@ -363,31 +545,34 @@
                         const name = e.features[0].properties.name;
                         const description = e.features[0].properties.description || "No description available.";
                         const severity = e.features[0].properties.severity || "Unknown";
+                        const comment = e.features[0].properties.comment
 
                         new maplibregl.Popup()
                             .setLngLat(coordinates)
                             .setHTML(`
-                                <div style="font-family: Arial, sans-serif; padding: 10px; max-width: 200px;">
-                                    <h3 style="margin: 0; font-size: 18px;">${name}</h3>
-                                    <p style="margin: 5px 0;">${description}</p>
-                                    <p style="margin: 5px 0;"><strong>Severity:</strong> ${severity}</p>
-                                </div>
-                            `)
+                        <div style="font-family: Arial, sans-serif; padding: 10px; max-width: 200px;">
+                            <h3 style="margin: 0; font-size: 18px;">${name}</h3>
+                            <p style="margin: 5px 0;">${description}</p>
+                            <p style="margin: 5px 0;"><strong>Severity:</strong> ${severity}</p>
+                            <p style="margin: 5px 0;"><strong>Comment:</strong> ${comment}</p>
+                        </div>
+                    `)
                             .addTo(map);
                     });
 
                     // 🔹 ADD CHECKBOXES FOR TRANSIT LIST
-                    data.transit_list.forEach(item => {
+                    data.features.forEach(item => {
+                        if (item.geometry.type !== "Point") return; // Only handle point features
                         const listItem = document.createElement("li");
 
                         const label = document.createElement("label");
-                        label.textContent = item.name;
+                        label.textContent = item.properties.name;
 
                         const checkbox = document.createElement("input");
                         checkbox.type = "checkbox";
                         checkbox.checked = true;
                         checkbox.addEventListener("change", () => {
-                            togglePointVisibility(item.id, checkbox.checked);
+                            togglePointVisibility(item.properties.id, checkbox.checked);
                         });
 
                         listItem.appendChild(label);
@@ -395,7 +580,9 @@
                         transitList.appendChild(listItem);
                     });
 
-                    // 🔹 FIND ALL LINESTRING FEATURES
+
+
+                    // 🔹 ADD LINES
                     const lineFeatures = data.features.filter(f => f.geometry.type === "LineString");
 
                     if (lineFeatures.length === 0) {
@@ -428,7 +615,7 @@
                             "line-color": [
                                 'match',
                                 ['get', 'severity'],
-                                'none', '#B0BEC5',  // Light Grey for 'none'
+                                'none', '#7e4da3',  // Light Grey for 'none'
                                 'low', '#FFFF00',    // Yellow for 'low'
                                 'high', '#FFA500',   // Orange for 'high'
                                 'highest', '#FF0000',// Red for 'highest'
@@ -443,6 +630,7 @@
                 })
                 .catch(error => console.error("❌ Error fetching locations:", error));
         });
+
 
 
     </script>
