@@ -347,12 +347,12 @@
                             "circle-color": [
                                 'match',
                                 ['get', 'severity'],
-                                'none', '#FFFFFF',  // White for 'none'
-                                'low', '#FFFF00',   // Yellow for 'low'
-                                'high', '#FFA500',  // Orange for 'high'
-                                'highest', '#FF0000', // Red for 'highest'
-                                'unknown', '#808080', // Gray for 'unknown'
-                                '#0000FF' // Default Blue if no severity matches
+                                'none', '#B0BEC5',  // Light Grey for 'none'
+                                'low', '#FFFF00',    // Yellow for 'low'
+                                'high', '#FFA500',   // Orange for 'high'
+                                'highest', '#FF0000',// Red for 'highest'
+                                'unknown', '#808080',// Gray for 'unknown'
+                                '#0000FF'            // Default Blue if no severity matches
                             ]
                         }
                     });
@@ -366,7 +366,13 @@
 
                         new maplibregl.Popup()
                             .setLngLat(coordinates)
-                            .setHTML(`<strong>${name}</strong><p>${description}</p><p><strong>Severity:</strong> ${severity}</p>`)
+                            .setHTML(`
+                                <div style="font-family: Arial, sans-serif; padding: 10px; max-width: 200px;">
+                                    <h3 style="margin: 0; font-size: 18px;">${name}</h3>
+                                    <p style="margin: 5px 0;">${description}</p>
+                                    <p style="margin: 5px 0;"><strong>Severity:</strong> ${severity}</p>
+                                </div>
+                            `)
                             .addTo(map);
                     });
 
@@ -422,12 +428,12 @@
                             "line-color": [
                                 'match',
                                 ['get', 'severity'],
-                                'none', '#2e9475',  // White for 'none'
-                                'low', '#FFFF00',   // Yellow for 'low'
-                                'high', '#FFA500',  // Orange for 'high'
-                                'highest', '#FF0000', // Red for 'highest'
-                                'unknown', '#808080', // Gray for 'unknown'
-                                '#0000FF' // Default Blue if no severity matches
+                                'none', '#B0BEC5',  // Light Grey for 'none'
+                                'low', '#FFFF00',    // Yellow for 'low'
+                                'high', '#FFA500',   // Orange for 'high'
+                                'highest', '#FF0000',// Red for 'highest'
+                                'unknown', '#808080',// Gray for 'unknown'
+                                '#0000FF'            // Default Blue if no severity matches
                             ],
                             "line-width": 4
                         }
@@ -437,6 +443,7 @@
                 })
                 .catch(error => console.error("❌ Error fetching locations:", error));
         });
+
 
     </script>
 </body>

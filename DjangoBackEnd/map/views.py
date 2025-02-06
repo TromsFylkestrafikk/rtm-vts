@@ -91,7 +91,7 @@ def location_geojson(request):
 
             transit_list.append({
                 "id": location.id,
-                "name": location.situation_id,
+                "name": location.road_number,
                 "description": location.location_description,
                 "coordinates": [lon, lat]
             })
@@ -104,7 +104,7 @@ def location_geojson(request):
                 },
                 "properties": {
                     "id": location.id,
-                    "name": location.situation_id,
+                    "name": location.road_number,
                     "description": location.location_description,
                     "severity" : location.severity
                 }
@@ -135,9 +135,10 @@ def location_geojson(request):
                         },
                         "properties": {
                             "id": location.id,
-                            "name": location.situation_id,
+                            "name": location.road_number,
                             "description": location.location_description,
                             "severity" : location.severity
+                            
                         }
                     })
 
