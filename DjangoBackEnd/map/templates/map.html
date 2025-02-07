@@ -71,14 +71,8 @@
 </head>
 
 <body>
-    <div id="toolbar">
-        <button id="draw-point">Draw Point</button>
-        <button id="draw-line">Draw Line</button>
-        <button id="draw-polygon">Draw Polygon</button>
-        <button id="clear-drawings">Clear</button>
-    </div>
 
-    <pre id="coordinates" class="coordinates"></pre>
+
 
     <div id="county-selector">
         <select id="county-dropdown">
@@ -97,540 +91,260 @@
         const map = new maplibregl.Map({
             container: 'map',
             style: {
-                "version": 8,
-                "sources": {
+                version: 8,
+                sources: {
                     "custom-tiles": {
-                        "type": "vector",
-                        "tiles": ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"],
-                        "minzoom": 0,
-                        "maxzoom": 14
+                        type: "vector",
+                        tiles: ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"],
+                        minzoom: 0,
+                        maxzoom: 14
                     }
                 },
-                "glyphs": "https://fonts.undpgeohub.org/fonts/{fontstack}/{range}.pbf",
-                "layers": [
-                    {
-                        "id": "roads-layer",
-                        "type": "line",
-                        "source": "custom-tiles",
-                        "source-layer": "transportation",  // 🚗 Roads Layer
-                        "paint": {
-                            "line-color": "#B0BEC5",
-                            "line-width": 3
-                        }
-                    },
-                    {
-                        "id": "forest-layer",
-                        "type": "fill",
-                        "source": "custom-tiles",
-                        "source-layer": "landcover",  // 🌲 Forests Layer
-                        "paint": {
-                            "fill-color": "#6aeb86",
-                            "fill-opacity": 0.5
-                        }
-                    },
-                    {
-                        "id": "water",
-                        "type": "fill",
-                        "source": "custom-tiles",
-                        "source-layer": "water",  // water Layer
-                        "paint": {
-                            "fill-color": "#64B5F6",
-                            "fill-opacity": 0.5
-                        }
-                    },
-                    {
-                        "id": "landuse",
-                        "type": "fill",
-                        "source": "custom-tiles",
-                        "source-layer": "landuse",  // human Layer
-                        "paint": {
-                            "fill-color": "#FFD54F",
-                            "fill-opacity": 0.5
-                        }
-                    },
-                    {
-                        "id": "landcover",
-                        "type": "fill",
-                        "source": "custom-tiles",
-                        "source-layer": "landcover",  // land Layer
-                        "paint": {
-                            "fill-color": "#e0ddb8",
-                            "fill-opacity": 0.5
-                        }
-                    },
-                    {
-                        "id": "place",
-                        "type": "symbol",
-                        "source": "custom-tiles",
-                        "source-layer": "place",  // sted Layer
-                        "layout": {
-                            "text-field": ["get", "name"],
-                            "text-font": ['Roboto Regular'],
-                            "text-size": 12,
-                            "text-allow-overlap": false,
-                            "text-max-width": 8,
-                            "symbol-spacing": 500
-                        },
-                        "paint": {
-                            "text-color": "#000000",
-                            "text-halo-color": "#FFFFFF",
-                            "text-halo-width": 2,
-                            "text-opacity": 1
-                        }
-                    },
-                    {
-                        "id": "building",
-                        "type": "fill",
-                        "source": "custom-tiles",
-                        "source-layer": "building",  // bygning Layer
-                        "paint": {
-                            "fill-color": "#A1887F",
-                            "fill-opacity": 0.5
-                        }
-                    },
-                    {
-                        "id": "transportation_name",
-                        "type": "symbol",
-                        "source": "custom-tiles",
-                        "source-layer": "transportation_name",  // navn på veier Layer
-                        "layout": {
-                            "text-field": ["get", "name"],
-                            "text-font": ['Roboto Regular'],
-                            "text-size": 12,
-                            "text-allow-overlap": false,
-                            "text-max-width": 8,
-                            "symbol-spacing": 500
-                        },
-                        "paint": {
-                            "text-color": "#000000",
-                            "text-halo-color": "#FFFFFF",
-                            "text-halo-width": 2,
-                            "text-opacity": 1
-                        }
-                    },
-                    {
-                        "id": "boundary",
-                        "type": "line",
-                        "source": "custom-tiles",
-                        "source-layer": "boundary",  // grense Layer
-                        "paint": {
-                            "line-color": "#b84600",
-                            "line-width": 0.5
-                        }
-                    }
-                ]
+                glyphs: "https://fonts.undpgeohub.org/fonts/{fontstack}/{range}.pbf",
+                layers: []
             },
-            center: [18.9553, 69.6496],  // Tromsø
+            center: [18.9553, 69.6496], // Tromsø
             zoom: 10
         });
 
+        // Common layer settings
+        const layers = [
+            { id: "roads-layer", type: "line", sourceLayer: "transportation", paint: { "line-color": "#B0BEC5", "line-width": 3 } },
+            { id: "forest-layer", type: "fill", sourceLayer: "landcover", paint: { "fill-color": "#6aeb86", "fill-opacity": 0.5 } },
+            { id: "water", type: "fill", sourceLayer: "water", paint: { "fill-color": "#64B5F6", "fill-opacity": 0.5 } },
+            { id: "landuse", type: "fill", sourceLayer: "landuse", paint: { "fill-color": "#FFD54F", "fill-opacity": 0.5 } },
+            { id: "landcover", type: "fill", sourceLayer: "landcover", paint: { "fill-color": "#e0ddb8", "fill-opacity": 0.5 } },
+            { id: "building", type: "fill", sourceLayer: "building", paint: { "fill-color": "#A1887F", "fill-opacity": 0.5 } },
+            { id: "boundary", type: "line", sourceLayer: "boundary", paint: { "line-color": "#b84600", "line-width": 0.5 } }
+        ];
+
+        // Add layers dynamically
+        layers.forEach(layer => {
+            map.on('load', () => {
+                map.addLayer({
+                    id: layer.id,
+                    type: layer.type,
+                    source: "custom-tiles",
+                    "source-layer": layer.sourceLayer,
+                    paint: layer.paint
+                });
+            });
+        });
+
+        // Add text-based layers separately (because they have layout settings)
+        const textLayers = [
+            { id: "place", sourceLayer: "place" },
+            { id: "transportation_name", sourceLayer: "transportation_name" }
+        ];
+
+        textLayers.forEach(layer => {
+            map.on('load', () => {
+                map.addLayer({
+                    id: layer.id,
+                    type: "symbol",
+                    source: "custom-tiles",
+                    "source-layer": layer.sourceLayer,
+                    layout: {
+                        "text-field": ["get", "name"],
+                        "text-font": ['Roboto Regular'],
+                        "text-size": 12,
+                        "text-allow-overlap": false,
+                        "text-max-width": 8,
+                        "symbol-spacing": 500
+                    },
+                    paint: {
+                        "text-color": "#000000",
+                        "text-halo-color": "#FFFFFF",
+                        "text-halo-width": 2,
+                        "text-opacity": 1
+                    }
+                });
+            });
+        });
+
+
+        // Initialize Mapbox Draw control with custom styles for different geometries
         const draw = new MapboxDraw({
-            displayControlsDefault: false,
-
+            displayControlsDefault: false, // Hides default drawing controls
             styles: [
-                {
-                    "id": "gl-draw-point",
-                    "type": "circle",
-                    "filter": ["==", "$type", "Point"],
-
-                },
-                {
-                    "id": "gl-draw-line",
-                    "type": "line",
-                    "filter": ["==", "$type", "LineString"],
-                    "paint": {
-                        "line-color": "#FF0000",
-                        "line-width": 3,
-                        "line-dasharray": [0.2, 2]
-                    }
-                },
-                {
-                    "id": "gl-draw-polygon-fill",
-                    "type": "fill",
-                    "filter": ["==", "$type", "Polygon"],
-                    "paint": {
-                        "fill-color": "#FF0000",
-                        "fill-opacity": 0.3
-                    }
-                },
-                {
-                    "id": "gl-draw-polygon-stroke",
-                    "type": "line",
-                    "filter": ["==", "$type", "Polygon"],
-                    "paint": {
-                        "line-color": "#FF0000",
-                        "line-width": 2
-                    }
-                }
+                { "id": "gl-draw-point", "type": "circle", "filter": ["==", "$type", "Point"] }, // Style for point features
+                { "id": "gl-draw-line", "type": "line", "filter": ["==", "$type", "LineString"], "paint": { "line-color": "#FF0000", "line-width": 3, "line-dasharray": [0.2, 2] } }, // Style for line features
+                { "id": "gl-draw-polygon-fill", "type": "fill", "filter": ["==", "$type", "Polygon"], "paint": { "fill-color": "#FF0000", "fill-opacity": 0.3 } }, // Fill style for polygons
+                { "id": "gl-draw-polygon-stroke", "type": "line", "filter": ["==", "$type", "Polygon"], "paint": { "line-color": "#FF0000", "line-width": 2 } } // Border style for polygons
             ]
         });
+
+        // Add the drawing control to the map
         map.addControl(draw);
 
+        // Reference to the HTML element that displays coordinates
         const coordinates = document.getElementById('coordinates');
+
+        // Function to update a map layer with new data
+        function updateLayer(id, type, data, paint) {
+            // Remove existing layer and source if they exist
+            if (map.getSource(id)) {
+                map.removeLayer(id);
+                map.removeSource(id);
+            }
+
+            // Add new source with filtered GeoJSON data
+            map.addSource(id, {
+                "type": "geojson",
+                "data": {
+                    "type": "FeatureCollection",
+                    "features": data
+                }
+            });
+
+            // Add new layer with the specified type and styles
+            map.addLayer({
+                "id": id,
+                "type": type,
+                "source": id,
+                "paint": paint,
+                "layout": { "visibility": data.length > 0 ? "visible" : "none" }
+            });
+        }
+
+        // Function to add a point layer filtered by county
         function addPointLayer(data, selectedCounty) {
-            // Filter points based on county
-            const filteredPoints = data.features.filter(f => f.geometry.type === "Point" && f.properties?.county?.toLowerCase().includes(selectedCounty.toLowerCase()));
-
-            if (map.getSource("locations")) {
-                map.removeLayer("locations-layer");
-                map.removeSource("locations");
-            }
-
-            map.addSource("locations", {
-                "type": "geojson",
-                "data": {
-                    "type": "FeatureCollection",
-                    "features": filteredPoints
-                }
-            });
-
-            map.addLayer({
-                "id": "locations-layer",
-                "type": "circle",
-                "source": "locations",
-                "paint": {
+            updateLayer("locations-layer", "circle",
+                data.features.filter(f =>
+                    f.geometry.type === "Point" &&
+                    f.properties?.county?.toLowerCase().includes(selectedCounty.toLowerCase())
+                ),
+                {
                     "circle-radius": 6,
-                    "circle-color": [
-                        'match',
-                        ['get', 'severity'],
-                        'none', '#7e4da3',
-                        'low', '#FFFF00',
-                        'high', '#FFA500',
-                        'highest', '#FF0000',
-                        'unknown', '#808080',
-                        '#0000FF'
-                    ]
-                },
-                "layout": {
-                    "visibility": filteredPoints.length > 0 ? "visible" : "none"  // Set visibility based on filtered points
+                    "circle-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF']
                 }
-            });
+            );
         }
 
-
+        // Function to add a line layer filtered by county
         function addLineLayer(data, selectedCounty) {
-            // Filter lines based on county
-            const filteredLines = data.features.filter(f => f.geometry.type === "LineString" && f.properties?.county?.toLowerCase().includes(selectedCounty.toLowerCase()));
+            const lines = data.features.filter(f =>
+                f.geometry.type === "LineString" &&
+                f.properties?.county?.toLowerCase().includes(selectedCounty.toLowerCase())
+            );
 
-            if (filteredLines.length === 0) {
-                console.error("❌ No LineString features found!");
-                return;
-            }
+            // Log an error if no lines are found
+            if (!lines.length) return console.error("❌ No LineString features found!");
 
-            if (map.getSource("line")) {
-                map.removeLayer("line-layer");
-                map.removeSource("line");
-            }
-
-            map.addSource("line", {
-                "type": "geojson",
-                "data": {
-                    "type": "FeatureCollection",
-                    "features": filteredLines
-                }
-            });
-
-            map.addLayer({
-                "id": "line-layer",
-                "type": "line",
-                "source": "line",
-                "paint": {
-                    "line-color": [
-                        'match',
-                        ['get', 'severity'],
-                        'none', '#7e4da3',
-                        'low', '#FFFF00',
-                        'high', '#FFA500',
-                        'highest', '#FF0000',
-                        'unknown', '#808080',
-                        '#0000FF'
-                    ],
-                    "line-width": 4
-                },
-                "layout": {
-                    "visibility": filteredLines.length > 0 ? "visible" : "none"  // Set visibility based on filtered lines
-                }
+            updateLayer("line-layer", "line", lines, {
+                "line-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'],
+                "line-width": 4
             });
         }
 
-
+        // Event listener for drawing completion
         map.on('draw.create', (e) => {
             const feature = e.features[0];
             if (!feature) return;
 
-            let coords = [];
-            if (feature.geometry.type === 'Point') {
-                coords = feature.geometry.coordinates;
-            } else if (feature.geometry.type === 'LineString') {
-                coords = feature.geometry.coordinates;
-            } else if (feature.geometry.type === 'Polygon') {
-                coords = feature.geometry.coordinates[0];
-            }
+            // Extract coordinates from the drawn feature
+            const coords = feature.geometry.type === 'Polygon' ? feature.geometry.coordinates[0] : feature.geometry.coordinates;
 
-            if (coords.length > 0) {
-                coordinates.innerHTML = `Coordinates:<br />${coords.map(coord => `Lng: ${coord[0].toFixed(5)}, Lat: ${coord[1].toFixed(5)}`).join('<br />')}`;
+            // Display coordinates in the HTML element
+            coordinates.innerHTML = `Coordinates:<br />${coords.map(coord => `Lng: ${coord[0].toFixed(5)}, Lat: ${coord[1].toFixed(5)}`).join('<br />')}`;
 
-                new maplibregl.Popup()
-                    .setLngLat(coords[0])
-                    .setHTML(`<strong>Coordinates:</strong><br>Lng: ${coords[0][0].toFixed(5)}<br>Lat: ${coords[0][1].toFixed(5)}`)
-                    .addTo(map);
-            }
+            // Show coordinates in a popup on the map
+            new maplibregl.Popup()
+                .setLngLat(coords[0])
+                .setHTML(`<strong>Coordinates:</strong><br>Lng: ${coords[0][0].toFixed(5)}<br>Lat: ${coords[0][1].toFixed(5)}`)
+                .addTo(map);
         });
 
-
-
-
-        document.getElementById("draw-point").addEventListener("click", () => {
-            draw.changeMode("draw_point");
-        });
-        document.getElementById("draw-line").addEventListener("click", () => {
-            draw.changeMode("draw_line_string");
-        });
-        document.getElementById("draw-polygon").addEventListener("click", () => {
-            draw.changeMode("draw_polygon");
-        });
-        document.getElementById("clear-drawings").addEventListener("click", () => {
-            draw.deleteAll();
-            coordinates.innerHTML = '';
-        });
-
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                draw.changeMode("simple_select");
-            }
-        });
-
-        // Adjust this function to toggle individual points' visibility
-        function togglePointVisibility(id, isVisible) {
-            const visibility = isVisible ? 'visible' : 'none';
-            map.setLayoutProperty('locations-layer', 'visibility', visibility);
+        // Function to toggle visibility of the points layer
+        function togglePointVisibility(isVisible) {
+            map.setLayoutProperty('locations-layer', 'visibility', isVisible ? 'visible' : 'none');
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            fetch("http://127.0.0.1:8000/api/locations/")
-                .then(response => response.json())
-                .then(data => {
-                    console.log("📡 API Response:", data);
+        // Variable to store GeoJSON data
+        let geojsonData = null;
 
-                    if (!data || !Array.isArray(data.features)) {
-                        console.error("❌ Unexpected data format:", data);
-                        return;
-                    }
+        // Fetch data from API on page load
+        document.addEventListener('DOMContentLoaded', async function () {
+            try {
+                const response = await fetch("http://127.0.0.1:8000/api/locations/");
+                geojsonData = await response.json();
 
-                    const counties = new Set();
-                    data.features.forEach(location => {
-                        if (location.properties && location.properties.county) { // Adjust based on data structure
-                            counties.add(location.properties.county);
-                        }
-                    });
+                // Validate fetched data
+                if (!geojsonData?.features) return console.error("❌ Invalid GeoJSON data format!");
 
-                    const countyDropdown = document.getElementById("county-dropdown");
-                    countyDropdown.innerHTML = '<option value="">Select County</option>'; // Reset
-
-                    counties.forEach(county => {
-                        const option = document.createElement("option");
-                        option.value = county;
-                        option.textContent = county;
-                        countyDropdown.appendChild(option);
-                    });
-
-                    console.log("✅ County dropdown populated.");
-                })
-                .catch(error => console.error("❌ Error fetching locations:", error));
-        });
-
-        document.getElementById("county-dropdown").addEventListener("change", function () {
-            const selectedCounty = this.value;
-
-            if (selectedCounty) {
-                fetch("http://127.0.0.1:8000/api/locations/")
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log("📡 API Response:", data);
-
-                        // Filter locations based on selected county
-                        const filteredLocations = data.features.filter(location => {
-                            const areaName = location.properties?.county; // Use correct key
-                            return areaName && areaName.trim().toLowerCase().includes(selectedCounty.trim().toLowerCase());
-                        });
-
-                        console.log(`🚀 Showing data for: ${selectedCounty}`, filteredLocations);
-
-                        if (map.getSource("locations")) {
-                            map.removeLayer("locations-layer");
-                            map.removeSource("locations");
-                        }
-
-                        // Add filtered points
-                        addPointLayer(data, selectedCounty);
-
-                        // Add filtered lines
-                        addLineLayer(data, selectedCounty);
-
-                        // Adjust map view to focus on the selected county
-                        if (filteredLocations.length > 0) {
-                            const firstLocation = filteredLocations[0];
-                            map.flyTo({
-                                center: firstLocation.geometry.coordinates,
-                                zoom: 9
-                            });
-                        } else {
-                            console.warn(`❌ No data found for ${selectedCounty}`);
-                        }
-                    })
-                    .catch(error => console.error("❌ Error fetching data for selected county:", error));
+                console.log("📡 API Data Fetched:", geojsonData);
+                populateCountyDropdown(geojsonData);
+                addAllLayers(geojsonData);
+                populateTransitList(geojsonData);
+            } catch (error) {
+                console.error("❌ Error fetching locations:", error);
             }
         });
 
+        // Populate the county dropdown with unique county names
+        function populateCountyDropdown(data) {
+            const counties = new Set(data.features.map(f => f.properties?.county).filter(Boolean));
+            const countyDropdown = document.getElementById("county-dropdown");
+            countyDropdown.innerHTML = '<option value="">Select County</option>';
+            counties.forEach(county => countyDropdown.appendChild(new Option(county, county)));
+            console.log("✅ County dropdown populated.");
+        }
 
-
-
-
-        document.addEventListener('DOMContentLoaded', function () {
-            fetch("http://127.0.0.1:8000/api/locations/")
-                .then(response => response.json())
-                .then(data => {
-                    console.log("GeoJSON Data:", location.Comment);
-
-                    const transitList = document.getElementById("transit-list");
-
-                    if (!transitList) {
-                        console.error("❌ 'transit-list' element not found in the document!");
-                        return;
-                    }
-
-                    // Clear existing items in the list
-                    transitList.innerHTML = "";
-
-                    // 🔹 ADD POINT LOCATIONS
-                    if (map.getSource("locations")) {
-                        map.removeLayer("locations-layer");
-                        map.removeSource("locations");
-                    }
-
-                    // Add severity-based coloring for points
-                    map.addSource("locations", {
-                        "type": "geojson",
-                        "data": {
-                            "type": "FeatureCollection",
-                            "features": data.features.filter(f => f.geometry.type === "Point")
-                        }
-                    });
-
-                    map.addLayer({
-                        "id": "locations-layer",
-                        "type": "circle",
-                        "source": "locations",
-                        "paint": {
-                            "circle-radius": 6,
-                            "circle-color": [
-                                'match',
-                                ['get', 'severity'],
-                                'none', '#7e4da3',  // Light Grey for 'none'
-                                'low', '#FFFF00',    // Yellow for 'low'
-                                'high', '#FFA500',   // Orange for 'high'
-                                'highest', '#FF0000',// Red for 'highest'
-                                'unknown', '#808080',// Gray for 'unknown'
-                                '#0000FF'            // Default Blue if no severity matches
-                            ]
-                        },
-                        "layout": {
-                            "visibility": "visible"  // Start with the layer hidden
-                        }
-                    });
-
-                    // 🔹 ADD POPUPS ON CLICK
-                    map.on('click', 'locations-layer', function (e) {
-                        const coordinates = e.features[0].geometry.coordinates.slice();
-                        const name = e.features[0].properties.name;
-                        const description = e.features[0].properties.description || "No description available.";
-                        const severity = e.features[0].properties.severity || "Unknown";
-                        const comment = e.features[0].properties.comment
-
-                        new maplibregl.Popup()
-                            .setLngLat(coordinates)
-                            .setHTML(`
-                        <div style="font-family: Arial, sans-serif; padding: 10px; max-width: 200px;">
-                            <h3 style="margin: 0; font-size: 18px;">${name}</h3>
-                            <p style="margin: 5px 0;">${description}</p>
-                            <p style="margin: 5px 0;"><strong>Severity:</strong> ${severity}</p>
-                            <p style="margin: 5px 0;"><strong>Comment:</strong> ${comment}</p>
-                        </div>
-                    `)
-                            .addTo(map);
-                    });
-
-                    // 🔹 ADD CHECKBOXES FOR TRANSIT LIST
-                    data.features.forEach(item => {
-                        if (item.geometry.type !== "Point") return; // Only handle point features
-                        const listItem = document.createElement("li");
-
-                        const label = document.createElement("label");
-                        label.textContent = item.properties.name;
-
-                        const checkbox = document.createElement("input");
-                        checkbox.type = "checkbox";
-                        checkbox.checked = true;
-                        checkbox.addEventListener("change", () => {
-                            togglePointVisibility(item.properties.id, checkbox.checked);
-                        });
-
-                        listItem.appendChild(label);
-                        listItem.appendChild(checkbox);
-                        transitList.appendChild(listItem);
-                    });
-
-
-
-                    // 🔹 ADD LINES
-                    const lineFeatures = data.features.filter(f => f.geometry.type === "LineString");
-
-                    if (lineFeatures.length === 0) {
-                        console.error("❌ No LineString features found!");
-                        return;
-                    }
-
-                    console.log(`✅ Found ${lineFeatures.length} LineString features!`, lineFeatures);
-
-                    // 🔹 REMOVE OLD LINE LAYER IF IT EXISTS
-                    if (map.getSource("line")) {
-                        map.removeLayer("line-layer");
-                        map.removeSource("line");
-                    }
-
-                    // Add severity-based coloring for lines
-                    map.addSource("line", {
-                        "type": "geojson",
-                        "data": {
-                            "type": "FeatureCollection",
-                            "features": lineFeatures
-                        }
-                    });
-
-                    map.addLayer({
-                        "id": "line-layer",
-                        "type": "line",
-                        "source": "line",
-                        "paint": {
-                            "line-color": [
-                                'match',
-                                ['get', 'severity'],
-                                'none', '#7e4da3',  // Light Grey for 'none'
-                                'low', '#FFFF00',    // Yellow for 'low'
-                                'high', '#FFA500',   // Orange for 'high'
-                                'highest', '#FF0000',// Red for 'highest'
-                                'unknown', '#808080',// Gray for 'unknown'
-                                '#0000FF'            // Default Blue if no severity matches
-                            ],
-                            "line-width": 4
-                        }
-                    });
-
-                    console.log("✅ Line layer added successfully!");
-                })
-                .catch(error => console.error("❌ Error fetching locations:", error));
+        // Event listener for county dropdown selection
+        document.getElementById("county-dropdown").addEventListener("change", function () {
+            if (!geojsonData) return;
+            updateMapWithFilteredData(geojsonData.features.filter(f =>
+                f.properties?.county?.trim().toLowerCase() === this.value.trim().toLowerCase()
+            ));
         });
 
+        // Update the map with filtered data based on the selected county
+        function updateMapWithFilteredData(filteredFeatures) {
+            updateLayer("locations-layer", "circle", filteredFeatures.filter(f => f.geometry.type === "Point"), {
+                "circle-radius": 6,
+                "circle-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF']
+            });
+
+            updateLayer("line-layer", "line", filteredFeatures.filter(f => f.geometry.type === "LineString"), {
+                "line-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'],
+                "line-width": 4
+            });
+
+            // Move the map to focus on the first relevant feature
+            const focus = filteredFeatures.find(f => f.geometry.type === "Point") || filteredFeatures.find(f => f.geometry.type === "LineString");
+            if (focus) map.flyTo({ center: focus.geometry.coordinates[0], zoom: 9 });
+        }
+
+        // Function to add all layers (points and lines) to the map
+        function addAllLayers(data) {
+            const points = data.features.filter(f => f.geometry.type === "Point");
+            const lines = data.features.filter(f => f.geometry.type === "LineString");
+
+            updateLayer("locations-layer", "circle", points, { "circle-radius": 6, "circle-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'] });
+            updateLayer("line-layer", "line", lines, { "line-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'], "line-width": 4 });
+
+            // Click event to show popup info on points
+            map.on('click', 'locations-layer', function (e) {
+                const { name, description = "No description", comment } = e.features[0].properties;
+                new maplibregl.Popup().setLngLat(e.features[0].geometry.coordinates).setHTML(`<h3>${name}</h3><p>${description}</p><hr><p><strong>Comments:</strong> ${comment}</p>`).addTo(map);
+            });
+        }
+        
+        // Populates the transit list with checkboxes for each point feature
+        function populateTransitList(data) {
+            const transitList = document.getElementById("transit-list");
+            if (!transitList) return console.error("❌ 'transit-list' element not found!");
+            transitList.innerHTML = "";
+            data.features.filter(f => f.geometry.type === "Point").forEach(item => {
+                const listItem = document.createElement("li");
+                const label = document.createElement("label");
+                label.textContent = item.properties.name;
+                const checkbox = Object.assign(document.createElement("input"), { type: "checkbox", checked: true });
+                checkbox.addEventListener("change", () => togglePointVisibility(checkbox.checked));
+                listItem.append(label, checkbox);
+                transitList.appendChild(listItem);
+            });
+        }
 
 
     </script>
