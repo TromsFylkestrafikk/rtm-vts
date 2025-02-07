@@ -309,10 +309,6 @@
                 "line-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'],
                 "line-width": 4
             });
-
-            // Move the map to focus on the first relevant feature
-            const focus = filteredFeatures.find(f => f.geometry.type === "Point") || filteredFeatures.find(f => f.geometry.type === "LineString");
-            if (focus) map.flyTo({ center: focus.geometry.coordinates[0], zoom: 9 });
         }
 
         // Function to add all layers (points and lines) to the map
@@ -325,8 +321,8 @@
 
             // Click event to show popup info on points
             map.on('click', 'locations-layer', function (e) {
-                const { name, description = "No description", comment } = e.features[0].properties;
-                new maplibregl.Popup().setLngLat(e.features[0].geometry.coordinates).setHTML(`<h3>${name}</h3><p>${description}</p><hr><p><strong>Comments:</strong> ${comment}</p>`).addTo(map);
+                const { name, description = "No description", comment, severity } = e.features[0].properties;
+                new maplibregl.Popup().setLngLat(e.features[0].geometry.coordinates).setHTML(`<h3>${name}</h3><p>${description}</p><hr><p><strong>Comments:</strong> ${comment}</p><p><strong>Severity:</strong> ${severity}</p>`).addTo(map);
             });
         }
         
