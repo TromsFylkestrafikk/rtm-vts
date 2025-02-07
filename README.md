@@ -50,7 +50,7 @@ Navigate to your Django project directory and run:
 - python manage.py migrate
 2. Fetch Transit Data
 Populate the database with transit situation data by running:
-- python manage.py transit_info
+- python manage.py get_transit_info
 This command executes the management command that fetches data from the DATEX II API and stores it in your database.
 
 3. Run the Development Server
@@ -69,7 +69,7 @@ Processes the XML response and stores the data in the database.
 Uses the If-Modified-Since header to optimize network usage.
 Models:
 
-TransitInformation: Stores information about each transit situation.
+TransitInformation(should be road info): Stores information about each transit situation.
 ApiMetadata: Stores metadata such as the last modified date for the API data.
 Views:
 
