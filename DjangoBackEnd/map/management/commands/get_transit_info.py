@@ -7,10 +7,8 @@ from dateutil.parser import isoparse
 from datetime import timezone as dt_timezone
 import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand
-from django.utils.dateparse import parse_datetime
 from map.models import TransitInformation, ApiMetadata
 from config import UserName_DATEX, Password_DATEX
-from django.utils import timezone
 from email.utils import format_datetime
 
 # Set up Django settings
@@ -21,9 +19,36 @@ BaseURL = "https://datex-server-get-v3-1.atlas.vegvesen.no/"
 logger = logging.getLogger(__name__)
 
 """
-This script does an API call to VTS, and stores the information in the database.
-It is called by:
-python manage.py transit_info
+This script is a Django management command that fetches transit situation data from the VTS (Vegtrafikksentralen) API,
+processes the XML response, and stores the relevant information in the database.
+
+Key functionalities:
+- Makes a GET request to the VTS API endpoint to retrieve the latest transit situation data.
+- Utilizes the 'If-Modified-Since' HTTP header to request data only if it has been updated since the last fetch, optimizing network usage.
+- Parses the XML response using ElementTree and extracts data from each 'situationRecord' element.
+- Extracts various fields including:
+    - Situation ID and version
+    - Creation time and version time
+    - Probability of occurrence and severity
+    - Source information (country, identification, name, type)
+    - Validity period (status, overall start and end times)
+    - Location details (latitude, longitude, description, road number, area name)
+    - Transit service information (type and additional information)
+    - Positional data (coordinates list)
+    - Comments and public remarks
+- Handles datetime parsing with timezone awareness, converting all times to UTC.
+- Stores the extracted information in the 'TransitInformation' model, updating existing records or creating new ones based on the situation ID.
+- After processing, updates the 'last_modified_date' in the 'ApiMetadata' model using the 'Last-Modified' response header or the 'publicationTime' from the XML, to be used in subsequent requests.
+- Includes robust error handling and logging to track the script's operations and any issues that arise.
+
+Usage:
+- Run the script as a Django management command:
+    python manage.py transit_info
+
+Requirements:
+- Valid VTS API credentials (UserName_DATEX and Password_DATEX) must be provided in the 'config' module.
+- The 'dateutil' library is used for parsing ISO 8601 datetime strings (install with 'pip install python-dateutil' if necessary).
+- Ensure that the 'map' app and its models ('TransitInformation' and 'ApiMetadata') are properly set up in your Django project.
 """
 
 class Command(BaseCommand):
