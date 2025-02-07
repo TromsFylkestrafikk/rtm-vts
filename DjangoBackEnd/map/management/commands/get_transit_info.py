@@ -3,12 +3,15 @@ import logging
 import requests
 import django
 import json
+from dateutil.parser import isoparse
+from datetime import timezone as dt_timezone
 import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand
 from django.utils.dateparse import parse_datetime
 from map.models import TransitInformation, ApiMetadata
 from config import UserName_DATEX, Password_DATEX
 from django.utils import timezone
+from email.utils import format_datetime
 
 # Set up Django settings
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "my_project.settings")
@@ -18,7 +21,9 @@ BaseURL = "https://datex-server-get-v3-1.atlas.vegvesen.no/"
 logger = logging.getLogger(__name__)
 
 """
-This script does an API call to VTS, and stores the information 
+This script does an API call to VTS, and stores the information in the database.
+It is called by:
+python manage.py transit_info
 """
 
 class Command(BaseCommand):
@@ -33,9 +38,13 @@ class Command(BaseCommand):
             last_modified_date = last_modified_entry.value
             headers['If-Modified-Since'] = last_modified_date
             logger.info(f"Using If-Modified-Since header: {last_modified_date}")
-        # Prepare headers with If-Modified-Since if available
-        response = requests.get(url, auth=(UserName_DATEX, Password_DATEX), headers=headers)
-
+        print(f"Request Headers: {headers}")
+        try:
+            # Prepare headers with If-Modified-Since if available
+            response = requests.get(url, auth=(UserName_DATEX, Password_DATEX), headers=headers)
+        except requests.RequestException as e:
+            logger.error(f"HTTP request failed: {e}")
+            return
         if response.status_code == 200:
             try:
                 root = ET.fromstring(response.content)
@@ -44,10 +53,13 @@ class Command(BaseCommand):
                 return
             # Define namespaces
             namespaces = {
-                "ns2": "http://datex2.eu/schema/3/messageContainer",
-                "ns12": "http://datex2.eu/schema/3/situation",
-                "ns8": "http://datex2.eu/schema/3/locationReferencing",
-                "common": "http://datex2.eu/schema/3/common",
+                'ns0': 'http://datex2.eu/schema/3/messageContainer',
+                'ns2': 'http://datex2.eu/schema/3/messageContainer',
+                'ns12': 'http://datex2.eu/schema/3/situation',
+                'ns8': 'http://datex2.eu/schema/3/locationReferencing',
+                'common': 'http://datex2.eu/schema/3/common',
+                'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+                'def': 'http://datex2.eu/schema/3/common',  # Assign a prefix 'def' to default namespace
             }
 
             # Iterate over each situation record
@@ -125,7 +137,7 @@ class Command(BaseCommand):
                         situation_id=situation_id,
                         defaults={
                             'version': version,
-                            'creation_time': creation_time or timezone.now(),
+                            'creation_time': creation_time or dt_timezone.now(),
                             'version_time': version_time,
                             'probability_of_occurrence': probability_of_occurrence,
                             'severity': severity,
@@ -155,17 +167,38 @@ class Command(BaseCommand):
             # After processing, get the Last-Modified header and save it
             last_modified = response.headers.get('Last-Modified')
             if last_modified:
-                # Save or update the last modified date in the database
+                # Use Last-Modified header as is
+                logger.info(f"Saved Last-Modified date: {last_modified}")
+                last_modified_date_to_save = last_modified
+            else:
+                # Attempt to extract publicationTime from the XML
+                publication_time = root.findtext('./ns2:payload/def:publicationTime', namespaces=namespaces)
+                if publication_time:
+                    logger.debug(f"Extracted publicationTime: {publication_time}")
+                    parsed_publication_time = self.safe_parse_datetime(publication_time)
+                    if parsed_publication_time:
+                        # parsed_publication_time is already converted to UTC in safe_parse_datetime
+                        # Format datetime into HTTP-date format
+                        last_modified_fallback = format_datetime(parsed_publication_time, usegmt=True)
+                        last_modified_date_to_save = last_modified_fallback
+                        logger.info(f"No Last-Modified header found. Using publicationTime as last modified date: {last_modified_fallback}")
+                    else:
+                        logger.warning("Could not parse publicationTime.")
+                        last_modified_date_to_save = None
+                else:
+                    logger.warning("No Last-Modified header or publicationTime found in the response.")
+                    last_modified_date_to_save = None
+            # Save the last modified date if available
+            if last_modified_date_to_save:
                 ApiMetadata.objects.update_or_create(
                     key='last_modified_date',
-                    defaults={'value': last_modified}
+                    defaults={'value': last_modified_date_to_save}
                 )
-                logger.info(f"Saved Last-Modified date: {last_modified}")
-            else:
-                logger.warning("No Last-Modified header found in the response.")    
+            print(f"Last Modified Entry: {last_modified_entry}")
             logger.info("Successfully stored all transit data!")
+            # Save the last modified date if available
         elif response.status_code == 304:
-            logger.info("data not modified")
+            logger.info("data not modified!")
         else:
             logger.error(f"Error fetching data: HTTP {response.status_code}")
 
@@ -176,8 +209,14 @@ class Command(BaseCommand):
             return None
 
     def safe_parse_datetime(self, datetime_str):
+        if datetime_str is None:
+            return None
         try:
-            return parse_datetime(datetime_str) if datetime_str else None
+            # Parse the datetime string, including timezone information
+            parsed_datetime = isoparse(datetime_str)
+            # Ensure the datetime is timezone-aware and convert to UTC
+            parsed_datetime = parsed_datetime.astimezone(dt_timezone.utc)
+            return parsed_datetime
         except (ValueError, TypeError) as e:
             logger.error(f"Could not parse datetime '{datetime_str}': {e}")
             return None
