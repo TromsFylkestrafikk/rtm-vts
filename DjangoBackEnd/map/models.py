@@ -76,6 +76,7 @@ class TransitInformation(models.Model):
     pos_list_raw = models.TextField(null=True, blank=True, help_text="Raw posList string from XML")
     pos_list_coords = models.TextField(null=True, blank=True, help_text="Parsed posList as JSON")
     comment = models.TextField(null=True, blank=True)
+    filter_used=models.TextField(null=True,blank=True)
 
     def __str__(self):
         return f"{self.road_number} - {self.transit_service_type} ({self.transit_service_information})"
