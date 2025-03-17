@@ -1,349 +1,41 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MapLibre with Custom Tile Server</title>
+    
+    <!-- External Libraries -->
     <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css">
-    <!-- Mapbox Draw Library -->
     <script src="https://unpkg.com/@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css">
-
-    <style>
-        body,
-        html {
-            margin: 0;
-            height: 100%;
-        }
-
-        #map {
-            width: 100%;
-            height: 100vh;
-        }
-
-        #toolbar {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: white;
-            padding: 10px;
-            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-        }
-
-        #coordinates {
-            position: absolute;
-            top: 60px;
-            left: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 5px;
-            font-family: Arial, sans-serif;
-            z-index: 999;
-        }
-
-        #sidebar {
-            position: absolute;
-            top: 52px;
-            left: 10px;
-            width: 250px;
-            height: 400px;
-            background: white;
-            overflow-y: auto;
-            padding: 10px;
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-        }
-
-        #transit-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        #transit-list li {
-            margin-bottom: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-    </style>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'map/css/map.css' %}">
 </head>
-
 <body>
-
-
-
     <div id="county-selector">
         <select id="county-dropdown">
             <option value="">Select County</option>
-            <!-- Dynamic options will be added here -->
+        </select>
+        <select id="situation-dropdown">
+            <option value="">All Situation Types</option>
         </select>
     </div>
 
     <div id="sidebar">
         <h3>Transit Information</h3>
-        <ul id="transit-list"></ul> List of transit items
+        <ul id="transit-list"></ul>
     </div>
 
     <div id="map"></div>
-    <script>
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: {
-                version: 8,
-                sources: {
-                    "custom-tiles": {
-                        type: "vector",
-                        tiles: ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"],
-                        minzoom: 0,
-                        maxzoom: 14
-                    }
-                },
-                glyphs: "https://fonts.undpgeohub.org/fonts/{fontstack}/{range}.pbf",
-                layers: []
-            },
-            center: [18.9553, 69.6496], // Tromsø
-            zoom: 10
-        });
-
-        // Common layer settings
-        const layers = [
-            { id: "roads-layer", type: "line", sourceLayer: "transportation", paint: { "line-color": "#B0BEC5", "line-width": 3 } },
-            { id: "forest-layer", type: "fill", sourceLayer: "landcover", paint: { "fill-color": "#6aeb86", "fill-opacity": 0.5 } },
-            { id: "water", type: "fill", sourceLayer: "water", paint: { "fill-color": "#64B5F6", "fill-opacity": 0.5 } },
-            { id: "landuse", type: "fill", sourceLayer: "landuse", paint: { "fill-color": "#FFD54F", "fill-opacity": 0.5 } },
-            { id: "landcover", type: "fill", sourceLayer: "landcover", paint: { "fill-color": "#e0ddb8", "fill-opacity": 0.5 } },
-            { id: "building", type: "fill", sourceLayer: "building", paint: { "fill-color": "#A1887F", "fill-opacity": 0.5 } },
-            { id: "boundary", type: "line", sourceLayer: "boundary", paint: { "line-color": "#b84600", "line-width": 0.5 } }
-        ];
-
-        // Add layers dynamically
-        layers.forEach(layer => {
-            map.on('load', () => {
-                map.addLayer({
-                    id: layer.id,
-                    type: layer.type,
-                    source: "custom-tiles",
-                    "source-layer": layer.sourceLayer,
-                    paint: layer.paint
-                });
-            });
-        });
-
-        // Add text-based layers separately (because they have layout settings)
-        const textLayers = [
-            { id: "place", sourceLayer: "place" },
-            { id: "transportation_name", sourceLayer: "transportation_name" }
-        ];
-
-        textLayers.forEach(layer => {
-            map.on('load', () => {
-                map.addLayer({
-                    id: layer.id,
-                    type: "symbol",
-                    source: "custom-tiles",
-                    "source-layer": layer.sourceLayer,
-                    layout: {
-                        "text-field": ["get", "name"],
-                        "text-font": ['Roboto Regular'],
-                        "text-size": 12,
-                        "text-allow-overlap": false,
-                        "text-max-width": 8,
-                        "symbol-spacing": 500
-                    },
-                    paint: {
-                        "text-color": "#000000",
-                        "text-halo-color": "#FFFFFF",
-                        "text-halo-width": 2,
-                        "text-opacity": 1
-                    }
-                });
-            });
-        });
-
-
-        // Initialize Mapbox Draw control with custom styles for different geometries
-        const draw = new MapboxDraw({
-            displayControlsDefault: false, // Hides default drawing controls
-            styles: [
-                { "id": "gl-draw-point", "type": "circle", "filter": ["==", "$type", "Point"] }, // Style for point features
-                { "id": "gl-draw-line", "type": "line", "filter": ["==", "$type", "LineString"], "paint": { "line-color": "#FF0000", "line-width": 3, "line-dasharray": [0.2, 2] } }, // Style for line features
-                { "id": "gl-draw-polygon-fill", "type": "fill", "filter": ["==", "$type", "Polygon"], "paint": { "fill-color": "#FF0000", "fill-opacity": 0.3 } }, // Fill style for polygons
-                { "id": "gl-draw-polygon-stroke", "type": "line", "filter": ["==", "$type", "Polygon"], "paint": { "line-color": "#FF0000", "line-width": 2 } } // Border style for polygons
-            ]
-        });
-
-        // Add the drawing control to the map
-        map.addControl(draw);
-
-        // Reference to the HTML element that displays coordinates
-        const coordinates = document.getElementById('coordinates');
-
-        // Function to update a map layer with new data
-        function updateLayer(id, type, data, paint) {
-            // Remove existing layer and source if they exist
-            if (map.getSource(id)) {
-                map.removeLayer(id);
-                map.removeSource(id);
-            }
-
-            // Add new source with filtered GeoJSON data
-            map.addSource(id, {
-                "type": "geojson",
-                "data": {
-                    "type": "FeatureCollection",
-                    "features": data
-                }
-            });
-
-            // Add new layer with the specified type and styles
-            map.addLayer({
-                "id": id,
-                "type": type,
-                "source": id,
-                "paint": paint,
-                "layout": { "visibility": data.length > 0 ? "visible" : "none" }
-            });
-        }
-
-        // Function to add a point layer filtered by county
-        function addPointLayer(data, selectedCounty) {
-            updateLayer("locations-layer", "circle",
-                data.features.filter(f =>
-                    f.geometry.type === "Point" &&
-                    f.properties?.county?.toLowerCase().includes(selectedCounty.toLowerCase())
-                ),
-                {
-                    "circle-radius": 6,
-                    "circle-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF']
-                }
-            );
-        }
-
-        // Function to add a line layer filtered by county
-        function addLineLayer(data, selectedCounty) {
-            const lines = data.features.filter(f =>
-                f.geometry.type === "LineString" &&
-                f.properties?.county?.toLowerCase().includes(selectedCounty.toLowerCase())
-            );
-
-            // Log an error if no lines are found
-            if (!lines.length) return console.error("❌ No LineString features found!");
-
-            updateLayer("line-layer", "line", lines, {
-                "line-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'],
-                "line-width": 4
-            });
-        }
-
-        // Event listener for drawing completion
-        map.on('draw.create', (e) => {
-            const feature = e.features[0];
-            if (!feature) return;
-
-            // Extract coordinates from the drawn feature
-            const coords = feature.geometry.type === 'Polygon' ? feature.geometry.coordinates[0] : feature.geometry.coordinates;
-
-            // Display coordinates in the HTML element
-            coordinates.innerHTML = `Coordinates:<br />${coords.map(coord => `Lng: ${coord[0].toFixed(5)}, Lat: ${coord[1].toFixed(5)}`).join('<br />')}`;
-
-            // Show coordinates in a popup on the map
-            new maplibregl.Popup()
-                .setLngLat(coords[0])
-                .setHTML(`<strong>Coordinates:</strong><br>Lng: ${coords[0][0].toFixed(5)}<br>Lat: ${coords[0][1].toFixed(5)}`)
-                .addTo(map);
-        });
-
-        // Function to toggle visibility of the points layer
-        function togglePointVisibility(isVisible) {
-            map.setLayoutProperty('locations-layer', 'visibility', isVisible ? 'visible' : 'none');
-        }
-
-        // Variable to store GeoJSON data
-        let geojsonData = null;
-
-        // Fetch data from API on page load
-        document.addEventListener('DOMContentLoaded', async function () {
-            try {
-                const response = await fetch("http://127.0.0.1:8000/api/locations/");
-                geojsonData = await response.json();
-
-                // Validate fetched data
-                if (!geojsonData?.features) return console.error("❌ Invalid GeoJSON data format!");
-
-                console.log("📡 API Data Fetched:", geojsonData);
-                populateCountyDropdown(geojsonData);
-                addAllLayers(geojsonData);
-                populateTransitList(geojsonData);
-            } catch (error) {
-                console.error("❌ Error fetching locations:", error);
-            }
-        });
-
-        // Populate the county dropdown with unique county names
-        function populateCountyDropdown(data) {
-            const counties = new Set(data.features.map(f => f.properties?.county).filter(Boolean));
-            const countyDropdown = document.getElementById("county-dropdown");
-            countyDropdown.innerHTML = '<option value="">Select County</option>';
-            counties.forEach(county => countyDropdown.appendChild(new Option(county, county)));
-            console.log("✅ County dropdown populated.");
-        }
-
-        // Event listener for county dropdown selection
-        document.getElementById("county-dropdown").addEventListener("change", function () {
-            if (!geojsonData) return;
-            updateMapWithFilteredData(geojsonData.features.filter(f =>
-                f.properties?.county?.trim().toLowerCase() === this.value.trim().toLowerCase()
-            ));
-        });
-
-        // Update the map with filtered data based on the selected county
-        function updateMapWithFilteredData(filteredFeatures) {
-            updateLayer("locations-layer", "circle", filteredFeatures.filter(f => f.geometry.type === "Point"), {
-                "circle-radius": 6,
-                "circle-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF']
-            });
-
-            updateLayer("line-layer", "line", filteredFeatures.filter(f => f.geometry.type === "LineString"), {
-                "line-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'],
-                "line-width": 4
-            });
-        }
-
-        // Function to add all layers (points and lines) to the map
-        function addAllLayers(data) {
-            const points = data.features.filter(f => f.geometry.type === "Point");
-            const lines = data.features.filter(f => f.geometry.type === "LineString");
-
-            updateLayer("locations-layer", "circle", points, { "circle-radius": 6, "circle-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'] });
-            updateLayer("line-layer", "line", lines, { "line-color": ['match', ['get', 'severity'], 'none', '#7e4da3', 'low', '#FFFF00', 'high', '#FFA500', 'highest', '#FF0000', 'unknown', '#808080', '#0000FF'], "line-width": 4 });
-
-            // Click event to show popup info on points
-            map.on('click', 'locations-layer', function (e) {
-                const { name, description = "No description", comment, severity } = e.features[0].properties;
-                new maplibregl.Popup().setLngLat(e.features[0].geometry.coordinates).setHTML(`<h3>${name}</h3><p>${description}</p><hr><p><strong>Comments:</strong> ${comment}</p><p><strong>Severity:</strong> ${severity}</p>`).addTo(map);
-            });
-        }
-        
-        // Populates the transit list with checkboxes for each point feature
-        function populateTransitList(data) {
-            const transitList = document.getElementById("transit-list");
-            if (!transitList) return console.error("❌ 'transit-list' element not found!");
-            transitList.innerHTML = "";
-            data.features.filter(f => f.geometry.type === "Point").forEach(item => {
-                const listItem = document.createElement("li");
-                const label = document.createElement("label");
-                label.textContent = item.properties.name;
-                const checkbox = Object.assign(document.createElement("input"), { type: "checkbox", checked: true });
-                checkbox.addEventListener("change", () => togglePointVisibility(checkbox.checked));
-                listItem.append(label, checkbox);
-                transitList.appendChild(listItem);
-            });
-        }
-
-
-    </script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{% static 'map/js/map-config.js' %}"></script>
+    <script src="{% static 'map/js/map-layers.js' %}"></script>
+    <script src="{% static 'map/js/map-filters.js' %}"></script>
+    <script src="{% static 'map/js/map-interactions.js' %}"></script>
 </body>
-
 </html>

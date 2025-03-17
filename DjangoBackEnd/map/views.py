@@ -45,7 +45,8 @@ def location_geojson(request):
                 "id": location.id,
                 "name": location.road_number,
                 "description": location.location_description,
-                "coordinates": [lon, lat]
+                "coordinates": [lon, lat],
+                "situation_type": location.filter_used
             })
 
             features.append({
@@ -60,7 +61,8 @@ def location_geojson(request):
                     "description": location.location_description,
                     "severity": location.severity,
                     "comment": location.comment,
-                    "county": location.area_name  # Add county to properties
+                    "county": location.area_name,
+                    "situation_type": location.filter_used
                 }
             })
 
@@ -93,7 +95,8 @@ def location_geojson(request):
                             "description": location.location_description,
                             "severity": location.severity,
                             "comment": location.comment,
-                            "county": location.area_name  # Add county to properties
+                            "county": location.area_name,
+                            "situation_type": location.filter_used
                         }
                     })
 
