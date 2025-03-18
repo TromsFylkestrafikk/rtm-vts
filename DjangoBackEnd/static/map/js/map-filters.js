@@ -55,7 +55,36 @@ map.on('draw.create', (e) => {
         .setHTML(`<strong>Coordinates:</strong><br>Lng: ${coords[0][0].toFixed(5)}<br>Lat: ${coords[0][1].toFixed(5)}`)
         .addTo(map);
 });
-
+async function populateDropdowns() {
+    try {
+        const response = await fetch('/api/filter-options/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Populate county dropdown
+        const countyDropdown = document.getElementById("county-dropdown");
+        data.counties.forEach(county => {
+            const option = document.createElement("option");
+            option.value = county;
+            option.textContent = county;
+            countyDropdown.appendChild(option);
+        });
+        
+        // Populate situation dropdown
+        const situationDropdown = document.getElementById("situation-dropdown");
+        data.situation_types.forEach(type => {
+            const option = document.createElement("option");
+            option.value = type;
+            option.textContent = type;
+            situationDropdown.appendChild(option);
+        });
+    } catch (error) {
+        console.error("❌ Error populating dropdowns:", error);
+    }
+}
 // Initial data load
 document.addEventListener('DOMContentLoaded', async function () {
     try {
@@ -72,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         console.log("📡 API Data Fetched:", geojsonData);
-        
+        populateDropdowns();
         populateCountyDropdown(geojsonData);
         populateSituationDropdown(geojsonData);
         addAllLayers(geojsonData);
