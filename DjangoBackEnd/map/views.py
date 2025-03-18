@@ -11,17 +11,50 @@ def map(request):
 
 
 def is_epsg_4326(lon, lat):
-    
     """ Check if coordinates are already in EPSG:4326 (lat/lon) format. """
     return -180 <= lon <= 180 and -90 <= lat <= 90
+
+
 def get_filter_options(request):
-    # Get unique counties
+    '''
+    Retrieve unique filter options for transit information.
+
+    This function queries the database to retrieve unique values for **counties** and 
+    **situation types** from the `TransitInformation` model. The results are returned 
+    as a JSON response, making them useful for populating dropdown filters in a frontend UI.
+
+    Parameters
+    ----------
+    request : HttpRequest
+        The HTTP request object (not used in filtering, but required for Django views).
+
+    Returns
+    -------
+    JsonResponse
+        A JSON response containing two lists:
+        - `counties` (list of str): Unique county names.
+        - `situation_types` (list of str): Unique situation types.
+
+    Notes
+    -----
+    - The function removes `None` or empty values from the lists before returning them.
+    - Uses `distinct()` to ensure uniqueness in both `counties` and `situation_types`.
+
+    Example
+    -------
+    Response:
+    ```json
+    {
+        "counties": ["Oslo", "Bergen", "Trondheim"],
+        "situation_types": ["roadwork", "accident", "closure"]
+    }
+    ```
+    '''
     counties = TransitInformation.objects.values_list('area_name', flat=True).distinct()
-    counties = [county for county in counties if county]  # Filter out None/empty values
+    counties = [county for county in counties if county]
     
-    # Get unique situation types
     situation_types = TransitInformation.objects.values_list('filter_used', flat=True).distinct()
-    situation_types = [type for type in situation_types if type]  # Filter out None/empty values
+    situation_types = [type for type in situation_types if type]
     
     return JsonResponse({
         'counties': list(counties),
@@ -29,13 +62,78 @@ def get_filter_options(request):
     })
 
 def location_geojson(request):
+    '''
+    Generate a GeoJSON response containing transit location data.
+
+    This function retrieves transit location data from the database, filters it based on
+    optional query parameters (county and situation type), and formats the data into a
+    GeoJSON FeatureCollection. It supports both **Point** and **LineString** geometries, 
+    transforming coordinates when necessary.
+
+    Parameters
+    ----------
+    request : HttpRequest
+        The HTTP request object containing optional GET parameters:
+        - `county` (str, optional): Filters locations by county name.
+        - `situation_type` (str, optional): Filters locations by situation type.
+
+    Returns
+    -------
+    JsonResponse
+        A JSON response containing the formatted GeoJSON data.
+
+    Notes
+    -----
+    - Coordinates are stored in EPSG:25833 (UTM) and transformed to EPSG:4326 (WGS84) when needed.
+    - If `latitude` and `longitude` are provided, a **Point** feature is created.
+    - If `pos_list_coords` is provided, a **LineString** feature is created.
+    - Errors in processing `pos_list_coords` are caught and printed.
+
+    Example
+    -------
+    Request:
+        GET /api/location_geojson?county=Oslo&situation_type=roadwork
+
+    Response:
+    ```json
+    {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [10.7522, 59.9139]
+                },
+                "properties": {
+                    "id": 1,
+                    "name": "E6",
+                    "description": "Roadwork near city center",
+                    "severity": "High",
+                    "comment": "Delayed traffic",
+                    "county": "Oslo",
+                    "situation_type": "roadwork"
+                }
+            }
+        ],
+        "transit_list": [
+            {
+                "id": 1,
+                "name": "E6",
+                "description": "Roadwork near city center",
+                "coordinates": [10.7522, 59.9139]
+            }
+        ]
+    }
+    ```
+    '''
     crs_25833 = CRS('EPSG:25833')
     crs_4326 = CRS('EPSG:4326')
     transformer = Transformer.from_crs(crs_25833, crs_4326, always_xy=True)
     county = request.GET.get('county', None)
     situation_type = request.GET.get('situation_type', None)
-    # Filter locations by county if provided
-    locations = TransitInformation.objects.all()  # No county filter if none is provided
+    
+    locations = TransitInformation.objects.all()  
     if county:
         locations = locations.filter(area_name=county)
     if situation_type:
