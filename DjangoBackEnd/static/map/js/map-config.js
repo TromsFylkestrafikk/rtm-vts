@@ -1,19 +1,7 @@
 // map-config.js - Basic map setup and initialization
 const map = new maplibregl.Map({
     container: 'map',
-    style: {
-        version: 8,
-        sources: {
-            "custom-tiles": {
-                type: "vector",
-                tiles: ["https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf"],
-                minzoom: 0,
-                maxzoom: 14
-            }
-        },
-        glyphs: "https://fonts.undpgeohub.org/fonts/{fontstack}/{range}.pbf",
-        layers: []
-    },
+    style: 'https://victor2.tftservice.no/styles/osm-bright/style.json', // Use predefined style from Victor's server
     center: [18.9553, 69.6496], // Tromsø
     zoom: 10
 });

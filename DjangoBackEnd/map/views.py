@@ -67,7 +67,7 @@ def location_geojson(request):
 
     This function retrieves transit location data from the database, filters it based on
     optional query parameters (county and situation type), and formats the data into a
-    GeoJSON FeatureCollection. It supports both **Point** and **LineString** geometries, 
+    GeoJSON FeatureCollection. It supports both Point and LineString geometries, 
     transforming coordinates when necessary.
 
     Parameters
