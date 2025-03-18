@@ -50,16 +50,23 @@ def get_filter_options(request):
     }
     ```
     '''
-    counties = TransitInformation.objects.values_list('area_name', flat=True).distinct()
-    counties = [county for county in counties if county]
-    
-    situation_types = TransitInformation.objects.values_list('filter_used', flat=True).distinct()
-    situation_types = [type for type in situation_types if type]
-    
-    return JsonResponse({
-        'counties': list(counties),
-        'situation_types': list(situation_types)
-    })
+    try:
+        counties = TransitInformation.objects.values_list('area_name', flat=True).distinct()
+        counties = [county for county in counties if county]
+        
+        situation_types = TransitInformation.objects.values_list('filter_used', flat=True).distinct()
+        situation_types = [type for type in situation_types if type]
+        
+        severities = TransitInformation.objects.values_list('severity', flat=True).distinct()
+        severities = [severity for severity in severities if severity]
+        
+        return JsonResponse({
+            'counties': list(counties),
+            'situation_types': list(situation_types),
+            'severities': list(severities)
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 def location_geojson(request):
     '''
@@ -132,12 +139,15 @@ def location_geojson(request):
     transformer = Transformer.from_crs(crs_25833, crs_4326, always_xy=True)
     county = request.GET.get('county', None)
     situation_type = request.GET.get('situation_type', None)
+    severity = request.GET.get('severity')
     
     locations = TransitInformation.objects.all()  
     if county:
         locations = locations.filter(area_name=county)
     if situation_type:
         locations = locations.filter(filter_used=situation_type)
+    if severity:
+        locations = locations.filter(severity=severity)
     features = []
     transit_list = []
 

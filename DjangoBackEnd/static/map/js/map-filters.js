@@ -3,37 +3,6 @@ const coordinates = document.createElement('div');
 coordinates.id = 'coordinates';
 document.body.appendChild(coordinates);
 
-// Populates the transit list with checkboxes for each point feature
-function populateTransitList(data) {
-    const transitList = document.getElementById("transit-list");
-    if (!transitList) return console.error("❌ 'transit-list' element not found!");
-    
-    transitList.innerHTML = "";
-    
-    data.features
-        .filter(f => f.geometry.type === "Point")
-        .forEach(item => {
-            const listItem = document.createElement("li");
-            
-            const label = document.createElement("label");
-            label.textContent = item.properties.name || "Unnamed Location";
-            
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.checked = true;
-            checkbox.dataset.id = item.properties.id;
-            
-            checkbox.addEventListener("change", () => {
-                // Toggle visibility of this specific point if possible
-                // As a fallback, toggle all points
-                togglePointVisibility(checkbox.checked);
-            });
-            
-            listItem.appendChild(label);
-            listItem.appendChild(checkbox);
-            transitList.appendChild(listItem);
-        });
-}
 
 // Event listener for drawing completion
 map.on('draw.create', (e) => {
@@ -81,6 +50,15 @@ async function populateDropdowns() {
             option.textContent = type;
             situationDropdown.appendChild(option);
         });
+
+        // Corrected: use data.severities (plural)
+        const severityDropdown = document.getElementById("severity-dropdown");
+        data.severities.forEach(severity => {
+            const option = document.createElement("option");
+            option.value = severity;
+            option.textContent = severity.charAt(0).toUpperCase() + severity.slice(1);
+            severityDropdown.appendChild(option);
+        });
     } catch (error) {
         console.error("❌ Error populating dropdowns:", error);
     }
@@ -101,11 +79,20 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         console.log("📡 API Data Fetched:", geojsonData);
+        
+        // Populate dropdowns
         populateDropdowns();
-        populateCountyDropdown(geojsonData);
-        populateSituationDropdown(geojsonData);
+        
+        // Add map layers
         addAllLayers(geojsonData);
+        
+        // Populate transit list with buttons
         populateTransitList(geojsonData);
+        
+        // Add debug information
+        console.log("🚏 Transit list populated with:", 
+                    geojsonData.features.filter(f => f.geometry.type === "Point").length,
+                    "point features");
     } catch (error) {
         console.error("❌ Error fetching locations:", error);
     }
