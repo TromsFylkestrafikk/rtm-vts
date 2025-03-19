@@ -77,6 +77,8 @@ class TransitInformation(models.Model):
     pos_list_coords = models.TextField(null=True, blank=True, help_text="Parsed posList as JSON")
     comment = models.TextField(null=True, blank=True)
     filter_used=models.TextField(null=True,blank=True)
+    is_road_closed = models.BooleanField(default=False, help_text="Indicates if the road is closed")
+    closure_type = models.CharField(max_length=255, null=True, blank=True, help_text="Type of closure")
 
     def __str__(self):
         return f"{self.road_number} - {self.transit_service_type} ({self.transit_service_information})"

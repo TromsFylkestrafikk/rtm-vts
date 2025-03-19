@@ -1,9 +1,11 @@
 from django.shortcuts import render
+from django.urls import path
 from django.http import HttpResponse,JsonResponse
 from django.template import loader
 from .models import TransitInformation
 from pyproj import CRS, Transformer
 import ast  # Safe alternative to eval() for string-to-list conversion
+from .utils import get_trip_geojson 
 import os, json
 from django.conf import settings
 
@@ -244,3 +246,37 @@ def location_geojson(request):
     }
 
     return JsonResponse(geojson_data)
+
+def trip(request):
+    if request.method == 'POST':
+        from_place = request.POST.get('from')
+        to_place = request.POST.get('to')
+
+        # Example GeoJSON generation (replace with your actual logic)
+        geojson_data = {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [
+                        [10.7522, 59.9139],  # Example coordinates
+                        [10.7522, 59.9239]
+                    ]
+                },
+                "properties": {
+                    "distance": "10 km",
+                    "duration": "30 minutes"
+                }
+            }]
+        }
+
+        return JsonResponse({
+            'geojson': geojson_data,
+            'distance': '10 km',
+            'duration': '30 minutes',
+            'route_description': 'Sample route'
+        })
+    
+    # Render the trip planning page for GET requests
+    return render(request, 'trip.html')

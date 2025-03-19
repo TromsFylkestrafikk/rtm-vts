@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MapLibre with Custom Tile Server</title>
+    <title>{% block title %}MapLibre with Custom Tile Server{% endblock %}</title>
     
     <!-- External Libraries -->
     <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
@@ -14,6 +14,7 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'map/css/map.css' %}">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <div id="county-selector">
@@ -29,16 +30,62 @@
     </div>
 
     <div id="sidebar">
-        <h3>Transit Information</h3>
-        <ul id="transit-list"></ul>
+        <div class="section-header transit-header" onclick="toggleSection('transit-content')">
+            <h3>Transit Information</h3>
+            <span class="toggle-icon">▼</span>
+        </div>
+        <div id="transit-content" class="section-content">
+            <ul id="transit-list"></ul>
+        </div>
+        
+        <div class="section-header trip-header" onclick="toggleSection('trip-content')">
+            <h3>Trip Planner</h3>
+            <span class="toggle-icon">▼</span>
+        </div>
+        <div id="trip-content" class="section-content">
+            <div id="trip-planner">
+                <form id="trip-search-form" method="post">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <label for="from">From:</label>
+                        <input type="text" id="from" name="from" required 
+                            placeholder="Enter starting location">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="to">To:</label>
+                        <input type="text" id="to" name="to" required 
+                            placeholder="Enter destination">
+                    </div>
+                    <button type="submit" class="btn-search">
+                        Search Trip Route
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <div id="map"></div>
+    {% block content %}{% endblock %}
     
     <!-- Custom JavaScript -->
     <script src="{% static 'map/js/map-config.js' %}"></script>
     <script src="{% static 'map/js/map-layers.js' %}"></script>
     <script src="{% static 'map/js/map-filters.js' %}"></script>
     <script src="{% static 'map/js/map-interactions.js' %}"></script>
+    <script src="{% static 'map/js/sidebar-toggle.js' %}"></script>
+    
+    <script>
+    // Pass current page information to JavaScript
+    document.addEventListener('DOMContentLoaded', function() {
+        // Create a variable that JavaScript can read
+        window.isOnTripPage = {% if request.path == '/trip/' %}true{% else %}false{% endif %};
+        
+        // Initialize the sidebar sections
+        initializeSidebar();
+    });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

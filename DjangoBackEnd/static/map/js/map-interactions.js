@@ -195,6 +195,12 @@ function highlightLocation(id) {
         }, 2000);
     }
 }
+const navigationControl = new maplibregl.NavigationControl({
+    showCompass: true,
+    showZoom: true
+});
+
+map.addControl(navigationControl, 'bottom-right');
 // Event listeners for dropdowns
 document.getElementById("county-dropdown").addEventListener("change", fetchFilteredData);
 document.getElementById("situation-dropdown").addEventListener("change", fetchFilteredData);
