@@ -24,6 +24,7 @@ map.on('draw.create', (e) => {
         .setHTML(`<strong>Coordinates:</strong><br>Lng: ${coords[0][0].toFixed(5)}<br>Lat: ${coords[0][1].toFixed(5)}`)
         .addTo(map);
 });
+
 async function populateDropdowns() {
     try {
         const response = await fetch('/api/filter-options/');
@@ -80,6 +81,17 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         console.log("📡 API Data Fetched:", geojsonData);
         
+        geojsonData.features.forEach(feature => {
+            if (feature.geometry && feature.geometry.coordinates) {
+                if (feature.geometry.type === "LineString") {
+                    feature.geometry.coordinates = feature.geometry.coordinates.map(coord => {
+                        coord.reverse();  
+                        return coord;
+                    });
+                }
+            }
+        });
+        
         // Populate dropdowns
         populateDropdowns();
         
@@ -89,10 +101,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Populate transit list with buttons
         populateTransitList(geojsonData);
         
-        // Add debug information
-        console.log("🚏 Transit list populated with:", 
-                    geojsonData.features.filter(f => f.geometry.type === "Point").length,
-                    "point features");
     } catch (error) {
         console.error("❌ Error fetching locations:", error);
     }

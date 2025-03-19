@@ -63,10 +63,10 @@ async function fetchFilteredData() {
     let url = API_BASE_URL;
     const params = new URLSearchParams();
     
-    if (countyValue) params.append('county', countyValue);
-    if (situationValue) params.append('situation_type', situationValue);
-    if (severityValue) params.append('severity', severityValue);
-    
+    if (countyValue) params.append('county', encodeURIComponent(countyValue));
+    if (situationValue) params.append('situation_type', encodeURIComponent(situationValue));
+    if (severityValue) params.append('severity', encodeURIComponent(severityValue));
+        
     if (params.toString()) {
         url += "?" + params.toString();
     }
@@ -98,7 +98,7 @@ function populateTransitList(data) {
     data.features
         .filter(f => f.geometry.type === "Point")
         .forEach(item => {
-            console.log("Creating list item for:", item.properties.name);
+            // console.log("Creating list item for:", item.properties.name);
             const listItem = document.createElement("li");
             listItem.classList.add("transit-item");
             // Create container for the item info
