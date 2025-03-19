@@ -6,6 +6,23 @@ from .models import TransitInformation
 from pyproj import CRS, Transformer
 import ast  # Safe alternative to eval() for string-to-list conversion
 from .utils import get_trip_geojson 
+import os, json
+from django.conf import settings
+
+def serve_geojson(request):
+    """Serve the pre-generated GeoJSON file instead of querying the database."""
+    geojson_path = os.path.join(settings.BASE_DIR, 'output.geojson')
+    print(f"GeoJSON path: {geojson_path}")
+    if os.path.exists(geojson_path):
+        with open(geojson_path, 'r') as file:
+            geojson_data = json.load(file)
+        return JsonResponse(geojson_data, safe=False)
+    else:
+        return JsonResponse({"error": "GeoJSON file not found"}, status=404)
+
+
+def test_view(request):
+    return JsonResponse({'message': 'Test path is working!'})
 
 def map(request):
     template = loader.get_template('map.html')

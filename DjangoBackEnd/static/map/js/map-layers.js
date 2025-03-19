@@ -1,25 +1,19 @@
 // map-layers.js - Layer definitions and functions
+// Fetch GeoJSON data and load it into the map
+
+
 
 // Add custom vector tile source
 map.on('load', () => {
     // Define vector tile source - the same source as in map-config.js
     map.addSource('custom-tiles', {
         type: 'vector',
-        tiles: ['https://victor2.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf'],
+        tiles: ['https://victor.tftservice.no/data/norway-vector/{z}/{x}/{y}.pbf'],
         minzoom: 0,
         maxzoom: 14
     });
 
-    // Layers to add
-    const layers = [
-        { id: "roads-layer", type: "line", sourceLayer: "transportation", paint: { "line-color": "#B0BEC5", "line-width": 3 } },
-        { id: "forest-layer", type: "fill", sourceLayer: "landcover", paint: { "fill-color": "#6aeb86", "fill-opacity": 0.5 } },
-        { id: "water", type: "fill", sourceLayer: "water", paint: { "fill-color": "#64B5F6", "fill-opacity": 0.5 } },
-        { id: "landuse", type: "fill", sourceLayer: "landuse", paint: { "fill-color": "#FFD54F", "fill-opacity": 0.5 } },
-        { id: "landcover", type: "fill", sourceLayer: "landcover", paint: { "fill-color": "#e0ddb8", "fill-opacity": 0.5 } },
-        { id: "building", type: "fill", sourceLayer: "building", paint: { "fill-color": "#A1887F", "fill-opacity": 0.5 } },
-        { id: "boundary", type: "line", sourceLayer: "boundary", paint: { "line-color": "#b84600", "line-width": 0.5 } }
-    ];
+    let layers = [];
 
     // Add layers to map
     layers.forEach(layer => {
@@ -31,69 +25,75 @@ map.on('load', () => {
             paint: layer.paint
         });
     });
+    
+    // Fetch GeoJSON data and add layers to the map
+    // fetch("http://127.0.0.1:8000/api/serve_geojson/")  // Ensure this endpoint is correct
+    // .then(response => response.json())
+    // .then(data => {
+    //     addAllLayers(data);  // Call function to add layers with the new data
+    // })
+    // .catch(error => console.error("Error loading GeoJSON:", error));
 
-    // Add text layers (Place names, transportation names, etc.)
-    const textLayers = [
-        { id: "place", sourceLayer: "place" },
-        { id: "transportation_name", sourceLayer: "transportation_name" }
-    ];
-
-    textLayers.forEach(layer => {
-        map.addLayer({
-            id: layer.id,
-            type: "symbol",
-            source: "custom-tiles",
-            "source-layer": layer.sourceLayer,
-            layout: {
-                "text-field": ["get", "name"],
-                "text-font": ['Roboto Regular'],
-                "text-size": 12,
-                "text-allow-overlap": false,
-                "text-max-width": 8,
-                "symbol-spacing": 500
-            },
-            paint: {
-                "text-color": "#000000",
-                "text-halo-color": "#FFFFFF",
-                "text-halo-width": 2,
-                "text-opacity": 1
-            }
-        });
-    });
+    // textLayers.forEach(layer => {
+    //     map.addLayer({
+    //         id: layer.id,
+    //         type: "symbol",
+    //         source: "custom-tiles",
+    //         "source-layer": layer.sourceLayer,
+    //         layout: {
+    //             "text-field": ["get", "name"],
+    //             // "text-font": ['Roboto Regular'],
+    //             "text-size": 12,
+    //             "text-allow-overlap": false,
+    //             "text-max-width": 8,
+    //             "symbol-spacing": 500
+    //         },
+    //         paint: {
+    //             "text-color": "#000000",
+    //             "text-halo-color": "#FFFFFF",
+    //             "text-halo-width": 2,
+    //             "text-opacity": 1
+    //         }
+    //     });
+    // });
 });
 
-// Function to update a map layer with new data
 function updateLayer(id, type, data, paint) {
     // Remove existing layer and source if they exist
     if (map.getSource(id)) {
+        console.log('Removing existing layer and source');
         map.removeLayer(id);
         map.removeSource(id);
     }
 
-    // Add new source with filtered GeoJSON data
+    // Add new source with the filtered data
     map.addSource(id, {
-        "type": "geojson",
-        "data": {
-            "type": "FeatureCollection",
-            "features": data
+        type: "geojson",
+        data: {
+            type: "FeatureCollection",
+            features: data
         }
     });
 
-    // Add new layer with the specified type and styles
+    // Add the layer with the specified paint properties
     map.addLayer({
-        "id": id,
-        "type": type,
-        "source": id,
-        "paint": paint,
-        "layout": { "visibility": data.length > 0 ? "visible" : "none" }
+        id: id,
+        type: type,
+        source: id,
+        paint: paint,
+        layout: {
+            visibility: data.length > 0 ? "visible" : "none"
+        }
     });
+
+    console.log('Layer added:', id);  // Log when a layer is added
 }
+
 
 // Function to add all data layers to the map
 function addAllLayers(data) {
     const points = data.features.filter(f => f.geometry.type === "Point");
     const lines = data.features.filter(f => f.geometry.type === "LineString");
-
     updateLayer("locations-layer", "circle", points, { 
         "circle-radius": 6, 
         "circle-color": ['match', ['get', 'severity'], 
@@ -105,7 +105,7 @@ function addAllLayers(data) {
             '#0000FF'
         ] 
     });
-    
+
     updateLayer("line-layer", "line", lines, { 
         "line-color": ['match', ['get', 'severity'], 
             'none', '#7e4da3', 
