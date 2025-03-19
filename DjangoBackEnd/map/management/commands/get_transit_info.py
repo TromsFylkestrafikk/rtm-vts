@@ -140,6 +140,8 @@ class Command(BaseCommand):
             return None
     def process_response(self, response):
         """Parse the XML response, process situation records, and update the database."""
+        with open("debug_response.xml", "w", encoding="utf-8") as f:
+            f.write(response.content.decode('utf-8'))
         try:
             root = ET.fromstring(response.content)
         except ET.ParseError as e:
@@ -148,8 +150,36 @@ class Command(BaseCommand):
         # Iterate over each situation record
         for situation in root.findall(".//ns12:situationRecord", namespaces):
             try:
+                is_road_closed = False
+                closure_type = None
+                # Extract comment
+                comment = None
+                general_public_comment = situation.find("ns12:generalPublicComment", namespaces=namespaces)
+                if general_public_comment is not None:
+                    comment_values = general_public_comment.findall(".//common:value", namespaces=namespaces)
+                    comments = [cv.text for cv in comment_values if cv.text]
+                    comment = ' '.join(comments) if comments else None
                 xsi_type = situation.attrib.get('{http://www.w3.org/2001/XMLSchema-instance}type')
                 situation_type = xsi_type.split(':')[-1] if xsi_type else 'Unknown'
+                if situation_type in ['RoadOrCarriagewayOrLaneManagement', 'GeneralNetworkManagement', 'NetworkManagement']:
+                    # Look for specific closure indicators
+                    road_closure_element = situation.find(".//ns12:roadOrCarriagewayOrLaneManagementType", namespaces=namespaces)
+                    if road_closure_element is not None and road_closure_element.text in ['roadClosed', 'lanesBlocked', 'roadBlocked']:
+                        is_road_closed = True
+                    
+                    # For network management
+                    if not is_road_closed:
+                        network_management_element = situation.find(".//ns12:networkManagementType", namespaces=namespaces)
+                        if network_management_element is not None and network_management_element.text in ['roadClosed', 'roadBlocked']:
+                            is_road_closed = True
+
+                # Extract closure type and reason if the road is closed
+                if is_road_closed:
+                    # Try to find specific closure type
+                    closure_type_element = situation.find(".//ns12:roadOrCarriagewayOrLaneManagementType", namespaces=namespaces)
+                    if closure_type_element is not None:
+                        closure_type = closure_type_element.text
+                    
                 # Extract basic information
                 situation_id = situation.get("id")
                 version = situation.get("version")
@@ -221,14 +251,6 @@ class Command(BaseCommand):
                 transit_service_information = situation.findtext("ns12:transitServiceInformation", namespaces=namespaces)
                 transit_service_type = situation.findtext("ns12:transitServiceType", namespaces=namespaces)
 
-                # Extract comment
-                comment = None
-                general_public_comment = situation.find("ns12:generalPublicComment", namespaces=namespaces)
-                if general_public_comment is not None:
-                    comment_values = general_public_comment.findall(".//common:value", namespaces=namespaces)
-                    comments = [cv.text for cv in comment_values if cv.text]
-                    comment = ' '.join(comments) if comments else None
-
                 # Create and save the TransitInformation object
                 TransitInformation.objects.update_or_create(
                     situation_id=situation_id,
@@ -256,6 +278,8 @@ class Command(BaseCommand):
                         'pos_list_coords': pos_list_coords,
                         'comment': comment,
                         'filter_used': situation_type,
+                        'is_road_closed': is_road_closed,
+                        'closure_type': closure_type,
                     }
                 )
                 logger.info(f"Stored: {situation_id} ({latitude}, {longitude})")

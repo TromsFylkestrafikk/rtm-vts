@@ -1,7 +1,9 @@
-from django.test import TestCase
+from django.test import TestCase, Client
 from unittest.mock import patch, MagicMock
 from django.core.management import call_command
 from map.models import TransitInformation, ApiMetadata
+from .utils import get_trip_geojson
+from .views import plan_trip
 
 class FetchTransitInformationTest(TestCase):
 
@@ -144,3 +146,26 @@ class FetchTransitInformationTest(TestCase):
 
         # Ensure that last_modified_date was not updated
         self.assertFalse(ApiMetadata.objects.filter(key='last_modified_date').exists())
+
+class TripPlanningTests(TestCase):
+    def test_get_trip_geojson(self):
+        # Test with valid from/to places
+        geojson = get_trip_geojson("NSR:StopPlace:58777", "NSR:StopPlace:58707")  # Example place IDs
+        self.assertIsNotNone(geojson)  # Check that the function returns something
+        self.assertEqual(geojson['type'], "FeatureCollection")  # Check GeoJSON structure
+
+        # Test with invalid or missing place IDs (expecting None or error handling)
+        geojson = get_trip_geojson(None, "NSR:StopPlace:58707")
+        self.assertIsNone(geojson)  # Or check for specific error handling
+
+    def test_plan_trip_view(self):
+        client = Client()
+        # Test POST request with valid data
+        response = client.post('/plan_trip/', {'from': "NSR:StopPlace:58777", 'to': "NSR:StopPlace:58707"})
+        self.assertEqual(response.status_code, 200)  # Check for successful response
+        self.assertIn('geojson', response.context)  # Check that geojson is in the context
+
+        # Test POST request with invalid data
+        response = client.post('/plan_trip/', {'from': "", 'to': ""})  # Empty values
+        self.assertEqual(response.status_code, 200)  # Or appropriate error code
+        self.assertIn('error', response.context)  # Check for error message in context
