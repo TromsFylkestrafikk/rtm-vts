@@ -81,16 +81,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         console.log("📡 API Data Fetched:", geojsonData);
         
-        geojsonData.features.forEach(feature => {
-            if (feature.geometry && feature.geometry.coordinates) {
-                if (feature.geometry.type === "LineString") {
-                    feature.geometry.coordinates = feature.geometry.coordinates.map(coord => {
-                        coord.reverse();  
-                        return coord;
-                    });
-                }
-            }
-        });
         
         // Populate dropdowns
         populateDropdowns();
