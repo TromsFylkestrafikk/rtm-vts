@@ -125,12 +125,14 @@ def parse_xml_to_geojson(xml_data):
                 if values is not None:
                     value = values.find('.//ns0:value', namespaces)
                     if value is not None:
-                        location_description_text.append(value.text)
+                        location_description_text.append(value.text.strip())  # Strip leading/trailing spaces
                     else:
                         location_description_text.append("No value element found in values")
                 else:
                     location_description_text.append("No values element found for location description.")
 
+            # Remove duplicates while maintaining order
+            location_description_text = list(dict.fromkeys(location_description_text))
             # Collect all comments
             comment_text = []
 
@@ -139,11 +141,13 @@ def parse_xml_to_geojson(xml_data):
                 if values is not None:
                     value = values.find('.//ns0:value', namespaces)
                     if value is not None:
-                        comment_text.append(value.text)
+                        comment_text.append(value.text.strip())
                     else:
                         comment_text.append("no value found")
                 else:
                     comment_text.append("no values found")
+                    
+            comment_text = list(dict.fromkeys(comment_text))
                     
             # Extract LineString coordinates (if available)
             gml_line_elements = situation.findall('.//ns8:gmlLineString', namespaces)
