@@ -89,11 +89,36 @@ function updateLayer(id, type, data, paint) {
     console.log('Layer added:', id);  // Log when a layer is added
 }
 
-
 // Function to add all data layers to the map
 function addAllLayers(data) {
-    const points = data.features.filter(f => f.geometry.type === "Point");
-    const lines = data.features.filter(f => f.geometry.type === "LineString");
+    const points = [];
+    const lines = [];
+
+    data.features.forEach(feature => {
+        if (feature.geometry.type === "Point") {
+            points.push(feature);
+        } else if (feature.geometry.type === "LineString") {
+            lines.push(feature);
+        } else if (feature.geometry.type === "GeometryCollection") {
+            feature.geometry.geometries.forEach(geometry => {
+                if (geometry.type === "Point") {
+                    points.push({
+                        type: "Feature",
+                        properties: feature.properties,  // Keep original properties
+                        geometry: geometry
+                    });
+                } else if (geometry.type === "LineString") {
+                    lines.push({
+                        type: "Feature",
+                        properties: feature.properties,  // Keep original properties
+                        geometry: geometry
+                    });
+                }
+            });
+        }
+    });
+
+    // Update the layers
     updateLayer("locations-layer", "circle", points, { 
         "circle-radius": 6, 
         "circle-color": ['match', ['get', 'severity'], 

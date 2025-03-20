@@ -173,19 +173,6 @@ def parse_xml_to_geojson(xml_data):
             lon_element = situation.find('.//ns8:coordinatesForDisplay/ns8:longitude', namespaces)
             point_coordinates = [float(lon_element.text), float(lat_element.text)] if lat_element is not None and lon_element is not None else None
 
-    
-            # # If LineString is not found, try extracting a single coordinate point
-            # point_coordinates = None
-            # if not coordinates:
-            #     lat_element = situation.find('.//ns8:coordinatesForDisplay/ns8:latitude', namespaces)
-            #     lon_element = situation.find('.//ns8:coordinatesForDisplay/ns8:longitude', namespaces)
-
-            #     if lat_element is not None and lon_element is not None:
-            #         lat = float(lat_element.text)
-            #         lon = float(lon_element.text)
-            #         point_coordinates = [lon, lat]  # GeoJSON format: [longitude, latitude]
-            #         logging.info(f"Extracted single coordinate for situation {situation_id}: ({lat}, {lon})")
-
             # Create GeoJSON feature
             feature = {
                 "type": "Feature",
