@@ -49,17 +49,18 @@
                     <div class="input-group">
                         <label for="from">From:</label>
                         <input type="text" id="from" name="from" required 
-                            placeholder="Enter starting location">
+                            value="NSR:StopPlace:60783">
                     </div>
                     
                     <div class="input-group">
                         <label for="to">To:</label>
                         <input type="text" id="to" name="to" required 
-                            placeholder="Enter destination">
+                            value="NSR:StopPlace:56973">
                     </div>
                     <button type="submit" class="btn-search">
                         Search Trip Route
                     </button>
+                    <button id="compareCoordinatesButton">Compare Trip and VTS Coordinates</button>
                 </form>
             </div>
         </div>
@@ -75,16 +76,6 @@
     <script src="{% static 'map/js/map-interactions.js' %}"></script>
     <script src="{% static 'map/js/sidebar-toggle.js' %}"></script>
     
-    <script>
-    // Pass current page information to JavaScript
-    document.addEventListener('DOMContentLoaded', function() {
-        // Create a variable that JavaScript can read
-        window.isOnTripPage = {% if request.path == '/trip/' %}true{% else %}false{% endif %};
-        
-        // Initialize the sidebar sections
-        initializeSidebar();
-    });
-    </script>
     
     {% block extra_js %}{% endblock %}
 </body>
