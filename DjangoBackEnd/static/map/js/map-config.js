@@ -3,7 +3,7 @@ const map = new maplibregl.Map({
     container: 'map',
     style: 'https://victor2.tftservice.no/styles/osm-bright/style.json', // Use predefined style from Victor's server
     center: [18.9553, 69.6496], // Tromsø
-    zoom: 10
+    zoom: 5
 });
 
 // Initialize Mapbox Draw control
@@ -23,3 +23,5 @@ map.addControl(draw);
 // Global variables
 let geojsonData = null;
 const API_BASE_URL = "http://127.0.0.1:8000/api/serve_geojson/";
+const API_BUS = "http://127.0.0.1:8000/api/serve_bus/";
+const API_ROUTE = "http://127.0.0.1:8000/api/busroute/";
