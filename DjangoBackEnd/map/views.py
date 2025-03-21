@@ -12,7 +12,6 @@ from django.conf import settings
 def serve_geojson(request):
     """Serve the pre-generated GeoJSON file instead of querying the database."""
     geojson_path = os.path.join(settings.BASE_DIR, 'output.geojson')
-    print(f"GeoJSON path: {geojson_path}")
     if os.path.exists(geojson_path):
         with open(geojson_path, 'r') as file:
             geojson_data = json.load(file)
@@ -60,7 +59,7 @@ def is_epsg_4326(lon, lat):
     return -180 <= lon <= 180 and -90 <= lat <= 90
 
 
-def get_filter_options(request):
+def get_filter_options_from_db(request):
     '''
     Retrieve unique filter options for transit information.
 
@@ -112,7 +111,41 @@ def get_filter_options(request):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+def get_filter_options(request):
+    try:
+        # Read the geojson file
+        with open('output.geojson', 'r') as file:
+            geojson_data = json.load(file)
 
+        counties = set()
+        situation_types = set()
+        severities = set()
+
+        # Iterate over features in geojson
+        for feature in geojson_data.get('features', []):
+            properties = feature.get('properties', {})
+
+            # Collect unique values for counties, situation types, and severities
+            county = properties.get('county')
+            if county:
+                counties.add(county)
+
+            situation_type = properties.get('situation_type')
+            if situation_type:
+                situation_types.add(situation_type)
+
+            severity = properties.get('severity')
+            if severity:
+                severities.add(severity)
+
+        # Convert sets to lists and return as JSON
+        return JsonResponse({
+            'counties': list(counties),
+            'situation_types': list(situation_types),
+            'severities': list(severities)
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 def location_geojson(request):
     '''
     Generate a GeoJSON response containing transit location data.
@@ -279,29 +312,10 @@ def trip(request):
         to_place = request.POST.get('to')
 
         # Example GeoJSON generation (replace with your actual logic)
-        geojson_data = {
-            "type": "FeatureCollection",
-            "features": [{
-                "type": "Feature",
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [
-                        [10.7522, 59.9139],  # Example coordinates
-                        [10.7522, 59.9239]
-                    ]
-                },
-                "properties": {
-                    "distance": "10 km",
-                    "duration": "30 minutes"
-                }
-            }]
-        }
+        trip_data = get_trip_geojson(from_place,to_place,num_trips=1)
 
         return JsonResponse({
-            'geojson': geojson_data,
-            'distance': '10 km',
-            'duration': '30 minutes',
-            'route_description': 'Sample route'
+            'trip_data': trip_data,
         })
     
     # Render the trip planning page for GET requests
