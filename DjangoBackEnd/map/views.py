@@ -20,6 +20,32 @@ def serve_geojson(request):
         return JsonResponse({"error": "GeoJSON file not found"}, status=404)
 
 
+def serve_bus(request):
+    '''
+    the updated bus list is served here
+    '''
+    buslist_path = os.path.join(settings.BASE_DIR,"bus_positions.json")
+    print(f"bus list path: {buslist_path}")
+    if os.path.exists(buslist_path):
+        with open(buslist_path,'r') as file:
+            buslist_data = json.load(file)
+        return JsonResponse(buslist_data,safe=False)
+    else:
+        return JsonResponse({"error": "buslist file not found"},status = 404)
+    
+def busroute(request):
+    '''
+    busroute
+    '''
+    route_path = os.path.join(settings.BASE_DIR,"route_coordinates.geojson")
+    print(f"bus list path: {route_path}")
+    if os.path.exists(route_path):
+        with open(route_path,'r') as file:
+            route_data = json.load(file)
+        return JsonResponse(route_data,safe=False)
+    else:
+        return JsonResponse({"error": "buslist file not found"},status = 404)
+
 def test_view(request):
     return JsonResponse({'message': 'Test path is working!'})
 

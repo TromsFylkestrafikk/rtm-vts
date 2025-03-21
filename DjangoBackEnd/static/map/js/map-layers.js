@@ -26,36 +26,6 @@ map.on('load', () => {
         });
     });
     
-    // Fetch GeoJSON data and add layers to the map
-    // fetch("http://127.0.0.1:8000/api/serve_geojson/")  // Ensure this endpoint is correct
-    // .then(response => response.json())
-    // .then(data => {
-    //     addAllLayers(data);  // Call function to add layers with the new data
-    // })
-    // .catch(error => console.error("Error loading GeoJSON:", error));
-
-    // textLayers.forEach(layer => {
-    //     map.addLayer({
-    //         id: layer.id,
-    //         type: "symbol",
-    //         source: "custom-tiles",
-    //         "source-layer": layer.sourceLayer,
-    //         layout: {
-    //             "text-field": ["get", "name"],
-    //             // "text-font": ['Roboto Regular'],
-    //             "text-size": 12,
-    //             "text-allow-overlap": false,
-    //             "text-max-width": 8,
-    //             "symbol-spacing": 500
-    //         },
-    //         paint: {
-    //             "text-color": "#000000",
-    //             "text-halo-color": "#FFFFFF",
-    //             "text-halo-width": 2,
-    //             "text-opacity": 1
-    //         }
-    //     });
-    // });
 });
 
 function updateLayer(id, type, data, paint) {
