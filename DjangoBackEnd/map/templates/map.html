@@ -14,6 +14,8 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'map/css/map.css' %}">
+    <link rel="stylesheet" href="{% static 'map/css/trip.css' %}">
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -27,6 +29,7 @@
         <select id="severity-dropdown">
             <option value="">All Severities</option>
         </select>
+        <button id="toggle-collisions-btn" class="btn-toggle-collisions">Show Collisions</button>
     </div>
 
     <div id="sidebar">
@@ -49,18 +52,18 @@
                     <div class="input-group">
                         <label for="from">From:</label>
                         <input type="text" id="from" name="from" required 
-                            value="NSR:StopPlace:60783">
+                            value="NSR:StopPlace:1">
                     </div>
                     
                     <div class="input-group">
                         <label for="to">To:</label>
                         <input type="text" id="to" name="to" required 
-                            value="NSR:StopPlace:56973">
+                            value="NSR:StopPlace:57052">
                     </div>
                     <button type="submit" class="btn-search">
                         Search Trip Route
                     </button>
-                    <button id="compareCoordinatesButton">Compare Trip and VTS Coordinates</button>
+                    <!-- <button id="compareCoordinatesButton">Compare Trip and VTS Coordinates</button> -->
                 </form>
             </div>
         </div>
@@ -76,6 +79,8 @@
     <script src="{% static 'map/js/map-filters.js' %}"></script>
     <script src="{% static 'map/js/map-interactions.js' %}"></script>
     <script src="{% static 'map/js/sidebar-toggle.js' %}"></script>
+    <script src="{% static 'map/js/map-collisions.js' %}"></script>
+
     
     
     {% block extra_js %}{% endblock %}

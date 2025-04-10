@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', function() {
     const tripSearchForm = document.getElementById('trip-search-form');
     if (tripSearchForm) {
@@ -50,8 +51,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 function renderTripMap(trip_data) {
     console.log("Rendering trip with:", trip_data);
-    
-    if (!geojsonData || !trip_data.features || trip_data.features.length === 0) {
+    if (!trip_data || !trip_data.features || trip_data.features.length === 0) {
+        console.error("No valid GeoJSON data to render");
+        return;
+    }
+    if (!trip_data || !trip_data.features || trip_data.features.length === 60) {
         console.error("No valid GeoJSON data to render");
         return;
     }
@@ -238,119 +242,4 @@ function waitForMap() {
 // Call this function when the document is loaded
 document.addEventListener('DOMContentLoaded', function() {
     waitForMap();
-});
-// Function to fit the map to the bounds of the trip data
-function fitBounds(trip_data) {
-    const shouldFitBounds = true;
-    if (shouldFitBounds && trip_data.features.length > 0) {
-        const bounds = new maplibregl.LngLatBounds();
-        
-        trip_data.features.forEach(feature => {
-            if (feature.geometry && feature.geometry.coordinates) {
-                if (feature.geometry.type === 'LineString') {
-                    feature.geometry.coordinates.forEach(coord => {
-                        bounds.extend(coord);
-                    });
-                }
-            }
-        });
-        
-        if (!bounds.isEmpty()) {
-            map.fitBounds(bounds, {
-                padding: 50,
-                duration: 1000
-            });
-        }
-    }
-}
-
-// Function to compare coordinates with VTS data
-function compareTripAndVTSCoordinates(vts_data, trip_data) {
-    const tolerance = 0.0001;
-    const matches = [];
-
-    const tripPoints = [];
-    
-    // Process all features in trip data to extract points
-    trip_data.features.forEach(feature => {
-        if (feature.geometry.type === "LineString") {
-            if (feature.geometry.coordinates.length > 0) {
-                // Start point
-                tripPoints.push(feature.geometry.coordinates[0]);
-                // End point
-                tripPoints.push(feature.geometry.coordinates[feature.geometry.coordinates.length - 1]);
-            }
-        }
-    });
-
-    // Compare trip points with VTS coordinates
-    tripPoints.forEach(tripCoord => {
-        vts_data.features.forEach(vtsFeature => {
-            const vtsCoord = vtsFeature.geometry.coordinates;
-            if (compareCoordinates(tripCoord, vtsCoord, tolerance)) {
-                matches.push({
-                    tripCoord,
-                    vtsCoord
-                });
-            }
-        });
-    });
-
-    console.log('Matching coordinates:', matches);
-    
-    if (matches.length > 0) {
-        // Optionally add matching points to the map or display them
-        addMatchesToMap(matches);
-    } else {
-        alert("No matching coordinates found!");
-    }
-}
-
-// Function to compare two coordinates with a tolerance
-function compareCoordinates(coord1, coord2, tolerance) {
-    return Math.abs(coord1[0] - coord2[0]) < tolerance && Math.abs(coord1[1] - coord2[1]) < tolerance;
-}
-
-// Function to add matched coordinates to the map
-function addMatchesToMap(matches) {
-    const matchPoints = matches.map(match => ({
-        type: 'Feature',
-        geometry: {
-            type: 'Point',
-            coordinates: match.tripCoord
-        },
-        properties: {
-            name: 'Matched Point',
-            description: 'This point matches a VTS message'
-        }
-    }));
-
-    const matchLayerId = 'matched-coordinates';
-    
-    map.addSource(matchLayerId, {
-        type: 'geojson',
-        data: {
-            type: 'FeatureCollection',
-            features: matchPoints
-        }
-    });
-
-    map.addLayer({
-        id: matchLayerId,
-        type: 'circle',
-        source: matchLayerId,
-        paint: {
-            'circle-radius': 6,
-            'circle-color': '#FF0000',
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#000000'
-        }
-    });
-}
-
-// Event listener for the button click
-document.getElementById("compareCoordinatesButton").addEventListener("click", function() {
-    // You would call this function after trip data and VTS data are available
-    // Replace `vts_data` and `trip_data` with the actual data you want to compare
-    compareTripAndVTSCoordinates(vts_data, trip_data);
 });

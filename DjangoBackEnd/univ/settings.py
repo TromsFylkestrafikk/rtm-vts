@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django.contrib.gis',
     "map",
 ]
 
@@ -71,12 +73,40 @@ TEMPLATES = [
 WSGI_APPLICATION = "univ.wsgi.application"
 
 
+# --- Library Paths for SpatiaLite ---
+# Try to find paths automatically using Homebrew standard locations
+homebrew_prefix = os.getenv('HOMEBREW_PREFIX', '') # Get Homebrew prefix if set
+
+def find_library(lib_name, formula_name):
+    paths_to_try = [
+        f'/opt/homebrew/opt/{formula_name}/lib/{lib_name}', # Apple Silicon default
+        f'/usr/local/opt/{formula_name}/lib/{lib_name}',  # Intel default
+    ]
+    if homebrew_prefix:
+         paths_to_try.insert(0, os.path.join(homebrew_prefix, f'opt/{formula_name}/lib/{lib_name}'))
+
+    for path in paths_to_try:
+         if os.path.exists(path):
+            #  print(f"Found {lib_name} at: {path}")
+             return path
+    print(f"WARNING: Could not automatically find {lib_name}. Set manually if needed.")
+    return None
+
+# IMPORTANT: Django needs the path to the SpatiaLite library itself
+# Check if spatialite-tools provides mod_spatialite.dylib or if libspatialite is separate
+# Adjust formula_name and lib_name based on what brew installed and what file exists
+SPATIALITE_LIBRARY_PATH = "/opt/homebrew/lib/mod_spatialite.dylib"
+# You likely still need GEOS and PROJ
+GEOS_LIBRARY_PATH = find_library('libgeos_c.dylib', 'geos')
+PROJ_LIBRARY_PATH = find_library('libproj.dylib', 'proj')
+# GDAL is often needed too, even if just checked for by GeoDjango
+GDAL_LIBRARY_PATH = find_library('libgdal.dylib', 'gdal')
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
+        'ENGINE': 'django.contrib.gis.db.backends.spatialite',
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }

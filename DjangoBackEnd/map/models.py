@@ -1,17 +1,11 @@
 from django.db import models
+from django.contrib.gis.db import models as gis_models # Import GeoDjango models
 from django.utils import timezone
 
 class ApiMetadata(models.Model):
     """
     Model to store metadata related to API interactions.
-
-    Fields:
-    - key: A unique identifier for the metadata (e.g., 'last_modified_date').
-    - value: The value associated with the key (e.g., a timestamp or any other relevant information).
-
-    Purpose:
-    - This model is used to keep track of metadata information such as the last time data was fetched from an external API.
-    - It helps in optimizing API calls by storing and utilizing metadata like 'Last-Modified' dates for conditional requests.
+    (No changes needed here)
     """
     key = models.CharField(max_length=255, unique=True)
     value = models.TextField()
@@ -19,39 +13,11 @@ class ApiMetadata(models.Model):
     def __str__(self):
         return f"{self.key}: {self.value}"
 
+
 class TransitInformation(models.Model):
     """
-    Model to store transit situation information fetched from the VTS (Vegtrafikksentralen) API.
-
-    Fields:
-    - situation_id: Unique identifier for the transit situation.
-    - version: Version number of the situation record.
-    - creation_time: Timestamp when the situation record was created.
-    - version_time: Timestamp of the version of the situation record.
-    - probability_of_occurrence: Likelihood of the situation occurring (e.g., 'certain', 'probable').
-    - severity: Severity level of the situation (e.g., 'unknown', 'highest', 'low').
-    - source_country: Country code of the source (e.g., 'NO' for Norway).
-    - source_identification: Identification code of the source.
-    - source_name: Name of the source (e.g., 'NPRA' for Norwegian Public Roads Administration).
-    - source_type: Type of source (e.g., 'roadAuthorities').
-    - validity_status: Status of the situation's validity (e.g., 'definedByValidityTimeSpec').
-    - overall_start_time: Start time of the situation's validity period.
-    - overall_end_time: End time of the situation's validity period.
-    - latitude: Latitude coordinate of the situation location.
-    - longitude: Longitude coordinate of the situation location.
-    - location_description: Textual description of the location.
-    - road_number: Identifier for the road (e.g., 'F769', 'F850').
-    - area_name: Name of the area or county.
-    - transit_service_information: Additional information about the transit service (e.g., 'loadCapacityChanged', 'serviceSuspended').
-    - transit_service_type: Type of transit service (e.g., 'ferry').
-    - pos_list_raw: Raw positional data as a string from the XML response.
-    - pos_list_coords: Parsed positional data stored as JSON.
-    - comment: Any additional comments or public remarks related to the situation.
-
-    Purpose:
-    - Stores detailed information about transit situations such as ferries, road closures, and other incidents.
-    - Facilitates querying and displaying transit data on maps and in reports.
-    - Helps in analyzing and monitoring transit situations over time.
+    Model to store transit situation information fetched from the VTS API,
+    using GeoDjango fields for spatial data.
     """
     situation_id = models.CharField(max_length=255, unique=True)
     version = models.CharField(max_length=255)
@@ -66,19 +32,86 @@ class TransitInformation(models.Model):
     validity_status = models.CharField(max_length=255, null=True, blank=True)
     overall_start_time = models.DateTimeField(null=True, blank=True)
     overall_end_time = models.DateTimeField(null=True, blank=True)
-    latitude = models.FloatField(null=True, blank=True)
-    longitude = models.FloatField(null=True, blank=True)
+    location = gis_models.PointField(srid=4326, null=True, blank=True, help_text="Primary point location (SRID 4326 WGS84)")
+    path = gis_models.LineStringField(srid=4326, null=True, blank=True, help_text="LineString path from posList (SRID 4326 WGS84)")
     location_description = models.TextField(null=True, blank=True)
     road_number = models.CharField(max_length=255, null=True, blank=True)
     area_name = models.CharField(max_length=255, null=True, blank=True)
     transit_service_information = models.TextField(null=True, blank=True)
     transit_service_type = models.CharField(max_length=255, null=True, blank=True)
-    pos_list_raw = models.TextField(null=True, blank=True, help_text="Raw posList string from XML")
-    pos_list_coords = models.TextField(null=True, blank=True, help_text="Parsed posList as JSON")
+    pos_list_raw = models.TextField(null=True, blank=True, help_text="Raw posList string from XML for reference/debugging")
     comment = models.TextField(null=True, blank=True)
     filter_used=models.TextField(null=True,blank=True)
-    is_road_closed = models.BooleanField(default=False, help_text="Indicates if the road is closed")
-    closure_type = models.CharField(max_length=255, null=True, blank=True, help_text="Type of closure")
 
     def __str__(self):
-        return f"{self.road_number} - {self.transit_service_type} ({self.transit_service_information})"
+        service_info = f"{self.road_number} - {self.transit_service_type}" if self.road_number else f"{self.transit_service_type}"
+        location_info = f"at {self.location.y:.4f}, {self.location.x:.4f}" if self.location else "at unknown location"
+        return f"{service_info} ({self.transit_service_information or 'No details'}) {location_info}"
+
+
+
+class BusRoute(models.Model):
+    """
+    Stores the static geometry (path) of a specific bus route line.
+    """
+    # Primary Key (id) is added automatically by Django
+
+    path = gis_models.LineStringField(
+        srid=4326,
+        help_text="Route geometry as a LineString (SRID 4326 WGS84)"
+    )
+    version = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Version identifier for this route data (if provided by source)"
+    )
+    last_updated = models.DateTimeField(
+        default=timezone.now,
+        help_text="When this route information was last updated/imported"
+    )
+
+    def __str__(self):
+        # Using the primary key as a simple identifier
+        return f"Bus Route {self.pk}"
+
+    class Meta:
+        verbose_name = "Bus Route"
+        verbose_name_plural = "Bus Routes"
+
+class DetectedCollision(models.Model):
+    """
+    Stores pre-calculated collision instances between TransitInformation points
+    and BusRoute paths. Populated by a background task/management command.
+    """
+    transit_information = models.ForeignKey(
+        TransitInformation,
+        on_delete=models.CASCADE, # Or models.SET_NULL if you want to keep record if VTS msg deleted
+        related_name='detected_collisions',
+        db_index=True
+    )
+    bus_route = models.ForeignKey(
+        BusRoute,
+        on_delete=models.CASCADE,
+        related_name='detected_collisions',
+        db_index=True
+    )
+    # Store the coordinates of the transit point AT THE TIME of detection
+    transit_lon = models.FloatField()
+    transit_lat = models.FloatField()
+    # Store when this collision record was created (when the check was run)
+    detection_timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    # Optional: Store the tolerance used for this detection run
+    tolerance_meters = models.IntegerField(default=50)
+
+    class Meta:
+        verbose_name = "Detected Collision"
+        verbose_name_plural = "Detected Collisions"
+        # Ensure a VTS message isn't listed multiple times for the same route from the same check run
+        # Note: This assumes you clear old data before inserting new.
+        # If updating, you might need a different constraint or logic.
+        unique_together = ('transit_information', 'bus_route')
+        ordering = ['-detection_timestamp', 'transit_information']
+
+    def __str__(self):
+        return f"Collision: Transit {self.transit_information_id} near Route {self.bus_route_id} detected at {self.detection_timestamp}"

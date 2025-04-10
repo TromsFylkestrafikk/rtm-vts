@@ -65,7 +65,6 @@ async function populateDropdowns() {
     }
 }
 
-const updateInterval = 5000;  // Refresh every 5 seconds
 let busMarkers = {};  // Store markers by vehicleId
 
 // Function to fetch and update bus positions
@@ -117,87 +116,87 @@ function updateBusMarkers(busData) {
     });
 }
 
-function checkForIntersection(routeFeature, incidentFeature) {
-    console.log('Route feature geometry:', routeFeature.geometry.type);
-    console.log('Incident feature geometry:', incidentFeature.geometry.type);
+// function checkForIntersection(routeFeature, incidentFeature) {
+//     console.log('Route feature geometry:', routeFeature.geometry.type);
+//     console.log('Incident feature geometry:', incidentFeature.geometry.type);
 
-    // Ensure the route is a LineString
-    if (routeFeature.geometry.type !== "LineString") {
-        console.error("Route feature is not a LineString");
-        return false;
-    }
+//     // Ensure the route is a LineString
+//     if (routeFeature.geometry.type !== "LineString") {
+//         console.error("Route feature is not a LineString");
+//         return false;
+//     }
 
-    let incidentCoordinates = null;
+//     let incidentCoordinates = null;
 
-    // Handle GeometryCollection, which can contain both Point and LineString
-    if (incidentFeature.geometry.type === "GeometryCollection") {
-        const pointGeometry = incidentFeature.geometry.geometries.find(g => g.type === "Point");
-        const lineGeometry = incidentFeature.geometry.geometries.find(g => g.type === "LineString");
+//     // Handle GeometryCollection, which can contain both Point and LineString
+//     if (incidentFeature.geometry.type === "GeometryCollection") {
+//         const pointGeometry = incidentFeature.geometry.geometries.find(g => g.type === "Point");
+//         const lineGeometry = incidentFeature.geometry.geometries.find(g => g.type === "LineString");
 
-        // If a Point geometry is found in the GeometryCollection
-        if (pointGeometry) {
-            incidentCoordinates = pointGeometry.coordinates;
-        }
-        // If a LineString geometry is found in the GeometryCollection
-        if (lineGeometry) {
-            console.log("Incident GeometryCollection contains a LineString, which may require different handling.");
-            return false; // You can handle this separately if needed
-        }
+//         // If a Point geometry is found in the GeometryCollection
+//         if (pointGeometry) {
+//             incidentCoordinates = pointGeometry.coordinates;
+//         }
+//         // If a LineString geometry is found in the GeometryCollection
+//         if (lineGeometry) {
+//             console.log("Incident GeometryCollection contains a LineString, which may require different handling.");
+//             return false; // You can handle this separately if needed
+//         }
 
-        if (!incidentCoordinates) {
-            console.error("No valid Point geometry found in GeometryCollection");
-            return false;
-        }
-    } else if (incidentFeature.geometry.type === "Point") {
-        incidentCoordinates = incidentFeature.geometry.coordinates;
-    } else {
-        console.error("Incident feature is neither Point nor GeometryCollection");
-        return false;
-    }
+//         if (!incidentCoordinates) {
+//             console.error("No valid Point geometry found in GeometryCollection");
+//             return false;
+//         }
+//     } else if (incidentFeature.geometry.type === "Point") {
+//         incidentCoordinates = incidentFeature.geometry.coordinates;
+//     } else {
+//         console.error("Incident feature is neither Point nor GeometryCollection");
+//         return false;
+//     }
 
-    // Log coordinates for debugging
-    console.log('Route Coordinates:', routeFeature.geometry.coordinates);
-    console.log('Incident Coordinates:', incidentCoordinates);
+//     // Log coordinates for debugging
+//     console.log('Route Coordinates:', routeFeature.geometry.coordinates);
+//     console.log('Incident Coordinates:', incidentCoordinates);
 
-    // Ensure coordinates are valid and numeric
-    if (!Array.isArray(routeFeature.geometry.coordinates) || !Array.isArray(incidentCoordinates)) {
-        console.error("❌ Coordinates must be arrays");
-        return false;
-    }
+//     // Ensure coordinates are valid and numeric
+//     if (!Array.isArray(routeFeature.geometry.coordinates) || !Array.isArray(incidentCoordinates)) {
+//         console.error("❌ Coordinates must be arrays");
+//         return false;
+//     }
 
-    // Validate coordinates: All coordinates must be numbers
-    const validRoute = routeFeature.geometry.coordinates.every(coord => 
-        Array.isArray(coord) && coord.length === 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number'
-    );
-    const validIncident = Array.isArray(incidentCoordinates) && incidentCoordinates.length === 2 
-        && typeof incidentCoordinates[0] === 'number' && typeof incidentCoordinates[1] === 'number';
+//     // Validate coordinates: All coordinates must be numbers
+//     const validRoute = routeFeature.geometry.coordinates.every(coord => 
+//         Array.isArray(coord) && coord.length === 2 && typeof coord[0] === 'number' && typeof coord[1] === 'number'
+//     );
+//     const validIncident = Array.isArray(incidentCoordinates) && incidentCoordinates.length === 2 
+//         && typeof incidentCoordinates[0] === 'number' && typeof incidentCoordinates[1] === 'number';
 
-    if (!validRoute || !validIncident) {
-        console.error("❌ Coordinates must be valid numbers");
-        return false;
-    }
+//     if (!validRoute || !validIncident) {
+//         console.error("❌ Coordinates must be valid numbers");
+//         return false;
+//     }
 
-    // Create turf features
-    try {
-        const route = turf.lineString(routeFeature.geometry.coordinates);
-        const incident = turf.point(incidentCoordinates);
+//     // Create turf features
+//     try {
+//         const route = turf.lineString(routeFeature.geometry.coordinates);
+//         const incident = turf.point(incidentCoordinates);
 
-        // Use turf.nearestPointOnLine to find the nearest point on the line
-        const nearestPoint = turf.nearestPointOnLine(route, incident);
+//         // Use turf.nearestPointOnLine to find the nearest point on the line
+//         const nearestPoint = turf.nearestPointOnLine(route, incident);
 
-        // Log the nearest point for debugging
-        console.log('Nearest Point on Route:', nearestPoint);
+//         // Log the nearest point for debugging
+//         console.log('Nearest Point on Route:', nearestPoint);
 
-        // Check if the incident is near the route (within a threshold)
-        const distance = turf.distance(incident, nearestPoint);
-        const threshold = 0.01;  // Define a threshold distance in kilometers for considering a point near the route
+//         // Check if the incident is near the route (within a threshold)
+//         const distance = turf.distance(incident, nearestPoint);
+//         const threshold = 0.01;  // Define a threshold distance in kilometers for considering a point near the route
 
-        return distance <= threshold;
-    } catch (error) {
-        console.error("❌ Error during turf operation:", error);
-        return false;
-    }
-}
+//         return distance <= threshold;
+//     } catch (error) {
+//         console.error("❌ Error during turf operation:", error);
+//         return false;
+//     }
+// }
 
 
 
@@ -318,7 +317,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         fetchAndCheckForOverlaps();
 
         // Optionally set up regular updates for bus positions
-        // setInterval(fetchAndUpdateBuses, updateInterval);
+        setInterval(fetchAndUpdateBuses, updateInterval);
 
         // Populate transit list with buttons (if needed)
         populateTransitList(geojsonData);
