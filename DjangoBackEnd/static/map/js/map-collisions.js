@@ -128,7 +128,7 @@ function addOrUpdateCollisionLayer(geojsonData) {
         type: 'circle',
         source: sourceId,
         paint: {
-            'circle-color': '#FF0000', // Bright red for collisions
+            'circle-color': '#000000', // Bright red for collisions
             'circle-radius': 8,
             'circle-stroke-width': 1,
             'circle-stroke-color': '#FFFFFF' // White outline

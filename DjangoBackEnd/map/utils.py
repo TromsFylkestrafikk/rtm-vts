@@ -3,7 +3,8 @@ import json
 import polyline
 from map.models import BusRoute, TransitInformation
 from django.db import connection
-
+from django.contrib.gis.geos import Polygon
+import time
 def get_trip_geojson(from_place, to_place, num_trips=2):
     url = "https://api.entur.io/journey-planner/v3/graphql"
     headers = {
@@ -94,10 +95,17 @@ def get_trip_geojson(from_place, to_place, num_trips=2):
     except (requests.exceptions.RequestException, json.JSONDecodeError, KeyError, TypeError) as e:
         print(f"Error in get_trip_geojson: {e}")
         return None
+# --- Define your Area of Interest (AOI) ---
+# Replace with actual accurate coordinates for Troms
+TROMS_BBOX_COORDS = (14.0, 68.2, 22.0, 70.5) # (min_lon, min_lat, max_lon, max_lat)
+TROMS_BBOX_POLYGON = Polygon.from_bbox(TROMS_BBOX_COORDS)
+TROMS_BBOX_POLYGON.srid = 4326
+PROJECTED_SRID = 32633
 
-def calculate_collisions_for_storage(distance_meters=20):
+def calculate_collisions_for_storage(distance_meters: int = 50) -> list:
     """
-    Calculates collisions using Raw SQL (SpatiaLite ST_Distance).
+    Calculates collisions using Raw SQL (optimized with BBOX filter, using ST_Distance
+    and GeomFromText for SpatiaLite compatibility).
     Returns details needed for storing in the DetectedCollision model.
     Requires SpatiaLite + PROJ library correctly configured.
 
@@ -110,20 +118,17 @@ def calculate_collisions_for_storage(distance_meters=20):
               Returns an empty list if no collisions are found or on error.
     """
     collision_data_for_storage = []
-    print(f"Calculating collisions for storage (Tolerance: {distance_meters}m)...")
-    try:
-        # --- Use Raw SQL for Collision Detection ---
-        projected_srid = 32633 # Example: UTM Zone 33N (Ensure this is correct!)
+    start_calc_time = time.time()
+    print(f"Calculating collisions for storage (Tolerance: {distance_meters}m, Area: Troms BBOX)...")
 
-        try:
-            transit_table = TransitInformation._meta.db_table
-            route_table = BusRoute._meta.db_table
-        except AttributeError as meta_err:
-            print(f"Error getting table names: {meta_err}")
-            return []
+    try:
+        transit_table = TransitInformation._meta.db_table
+        route_table = BusRoute._meta.db_table
+        bbox_wkt = TROMS_BBOX_POLYGON.wkt
+        bbox_srid = TROMS_BBOX_POLYGON.srid # Should be 4326
 
         with connection.cursor() as cursor:
-            # SELECT IDs and transit coordinates
+            # Use GeomFromText(wkt, srid) instead of ST_SetSRID(ST_GeomFromText(wkt), srid)
             sql = f"""
                 SELECT
                     t.id AS transit_id,
@@ -135,26 +140,47 @@ def calculate_collisions_for_storage(distance_meters=20):
                 INNER JOIN
                     "{route_table}" AS r ON t.location IS NOT NULL AND r.path IS NOT NULL
                 WHERE
+                    -- Filter 1: Transit location must be within the BBOX
+                    ST_Intersects(
+                        t.location,
+                        GeomFromText(%s, %s) -- Use GeomFromText with SRID parameter
+                    )
+                    AND
+                    -- Filter 2: Bus route path must intersect the BBOX
+                    ST_Intersects(
+                        r.path,
+                        GeomFromText(%s, %s) -- Use GeomFromText with SRID parameter
+                    )
+                    AND
+                    -- Proximity Check: Using ST_Distance on transformed geometries
                     ST_Distance(
-                        ST_Transform(t.location, %s),
-                        ST_Transform(r.path, %s)
-                    ) <= %s
+                        ST_Transform(t.location, %s), -- Transform point to projected SRID
+                        ST_Transform(r.path, %s)      -- Transform path to projected SRID
+                    ) <= %s                           -- Distance tolerance in meters
             """
-            cursor.execute(sql, [projected_srid, projected_srid, float(distance_meters)])
+            # Parameters order must match the %s placeholders
+            params = [
+                bbox_wkt, bbox_srid,           # Parameters for first GeomFromText
+                bbox_wkt, bbox_srid,           # Parameters for second GeomFromText
+                PROJECTED_SRID, PROJECTED_SRID, # Parameters for ST_Transform
+                float(distance_meters)         # Parameter for ST_Distance comparison
+            ]
+            cursor.execute(sql, params)
 
-            # --- Process results into simpler dictionaries ---
+            # --- Process results (same as before) ---
             columns = [col[0] for col in cursor.description]
-            for row in cursor.fetchall():
-                # Directly create the dictionary needed for storage
+            rows = cursor.fetchall()
+            for row in rows:
                 result_dict = dict(zip(columns, row))
                 collision_data_for_storage.append(result_dict)
             # --- End result processing ---
 
-        print(f"Calculated {len(collision_data_for_storage)} potential collisions.")
+        end_calc_time = time.time()
+        print(f"Raw SQL calculation finished in {end_calc_time - start_calc_time:.2f} seconds. Found {len(collision_data_for_storage)} potential collisions.")
         return collision_data_for_storage
 
     except Exception as e:
         print(f"An error occurred during collision calculation for storage: {e}")
         # import traceback
-        # traceback.print_exc()
+        # traceback.print_exc() # Uncomment for full details if it fails again
         return []

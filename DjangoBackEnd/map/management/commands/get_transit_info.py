@@ -7,7 +7,6 @@ from dateutil.parser import isoparse
 from datetime import timezone as dt_timezone
 import xml.etree.ElementTree as ET
 from django.core.management.base import BaseCommand
-from django.conf import settings # To potentially access SPATIALITE_LIBRARY_PATH if needed later
 # --- GeoDjango Imports ---
 from django.contrib.gis.geos import Point, LineString
 from django.core.exceptions import ValidationError
@@ -45,7 +44,6 @@ Key functionalities:
 - Creates GeoDjango Point objects from latitude/longitude.
 - Creates GeoDjango LineString objects from 'posList' data.
 - Stores extracted information in the 'TransitInformation' model, using spatial fields.
-- ... (rest of functionalities) ...
 
 Usage: ...
 Requirements: ...
@@ -73,12 +71,6 @@ class Command(BaseCommand):
         except requests.RequestException as e:
             logger.error(f"HTTP request failed: {e}")
             return
-        except requests.HTTPError as e:
-             if response.status_code == 304:
-                 logger.info("Data not modified (HTTP 304).")
-             else:
-                 logger.error(f"HTTP Error: {e}")
-             return # Exit if not modified or other HTTP error
 
         # Only process if status code was 200
         if response.status_code == 200:
@@ -228,10 +220,8 @@ class Command(BaseCommand):
                         'validity_status': validity_status,
                         'overall_start_time': overall_start_time,
                         'overall_end_time': overall_end_time,
-                        # Use the GeoDjango fields
                         'location': point_location,
                         'path': line_path,
-                        # Keep other fields
                         'location_description': location_description,
                         'road_number': road_number,
                         'area_name': area_name,
