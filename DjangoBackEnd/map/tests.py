@@ -1,12 +1,12 @@
 from django.test import TestCase, Client
 from unittest.mock import patch, MagicMock
 from django.core.management import call_command
-from map.models import TransitInformation, ApiMetadata, BusRoute
+from map.models import VtsSituation, ApiMetadata, BusRoute
 from .utils import get_trip_geojson
 from .views import trip, find_all_collisions
 from django.contrib.gis.geos import Point, LineString
 
-class FetchTransitInformationTest(TestCase):
+class FetchVtsSituationTest(TestCase):
 
     @patch("requests.get")
     def test_fetch_transit_information_api_failure(self, mock_get):
@@ -23,7 +23,7 @@ class FetchTransitInformationTest(TestCase):
             self.assertIn("Error fetching data: HTTP 500", log.output[0])
 
         # Ensure no data has been saved to the database
-        self.assertEqual(TransitInformation.objects.count(), 0)
+        self.assertEqual(VtsSituation.objects.count(), 0)
     @patch("requests.get")
     def test_fetch_and_store_transit_information(self, mock_get):
         # Prepare the mock response
@@ -49,8 +49,8 @@ class FetchTransitInformationTest(TestCase):
         mock_get.return_value = mock_response
         # Run your management command
         call_command('get_transit_info')
-        self.assertEqual(TransitInformation.objects.count(), 1)
-        transit_info = TransitInformation.objects.first()
+        self.assertEqual(VtsSituation.objects.count(), 1)
+        transit_info = VtsSituation.objects.first()
         self.assertEqual(transit_info.transit_service_type, 'ferry')
     @patch("requests.get")
     def test_no_action_on_304_response(self, mock_get):
@@ -73,7 +73,7 @@ class FetchTransitInformationTest(TestCase):
             mock_logger.info.assert_any_call("data not modified!")
 
         # Ensure no new data was saved to the database
-        self.assertEqual(TransitInformation.objects.count(), 0)
+        self.assertEqual(VtsSituation.objects.count(), 0)
     @patch("requests.get")
     def test_if_modified_since_header_absent_when_no_last_modified_date(self, mock_get):
         """Test that the If-Modified-Since header is not set when there is no last_modified_date in the database."""
@@ -111,7 +111,7 @@ class FetchTransitInformationTest(TestCase):
         self.assertEqual(kwargs['headers'], {})
 
         # Ensure that data was saved to the database
-        self.assertEqual(TransitInformation.objects.count(), 1)
+        self.assertEqual(VtsSituation.objects.count(), 1)
     # @patch("requests.get")
     # def test_no_last_modified_and_no_publication_time(self, mock_get):
     #     """Test that when neither Last-Modified header nor publicationTime is available, last_modified_date is not updated."""
@@ -142,8 +142,8 @@ class FetchTransitInformationTest(TestCase):
     #         # Ensure that appropriate warning was logged
     #         mock_logger.warning.assert_any_call("No Last-Modified header or publicationTime found in the response.")
 
-    #     # Ensure that the TransitInformation was saved
-    #     self.assertEqual(TransitInformation.objects.count(), 1)
+    #     # Ensure that the VtsSituation was saved
+    #     self.assertEqual(VtsSituation.objects.count(), 1)
 
     #     # Ensure that last_modified_date was not updated
     #     self.assertFalse(ApiMetadata.objects.filter(key='last_modified_date').exists())

@@ -10,7 +10,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.gis.geos import Point, LineString
 from django.core.exceptions import ValidationError
 # --- End GeoDjango Imports ---
-from map.models import TransitInformation, ApiMetadata
+from map.models import VtsSituation, ApiMetadata
 from config import UserName_DATEX, Password_DATEX
 from email.utils import format_datetime
 
@@ -20,12 +20,7 @@ django.setup()
 
 BaseURL = "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata/"
 logger = logging.getLogger(__name__)
-try:
-    import paho.mqtt.client as mqtt
-    mqtt_available = True
-except ImportError:
-    mqtt_available = False
-    mqtt = None # Define mqtt as None if import fails
+
 # Define namespaces (assuming these remain correct)
 namespaces = {
     'ns0': 'http://datex2.eu/schema/3/messageContainer',
@@ -47,7 +42,7 @@ Key functionalities:
 - Parses XML and extracts data including location details.
 - Creates GeoDjango Point objects from latitude/longitude.
 - Creates GeoDjango LineString objects from 'posList' data.
-- Stores extracted information in the 'TransitInformation' model, using spatial fields.
+- Stores extracted information in the 'VtsSituation' model, using spatial fields.
 
 Usage: ...
 Requirements: ...
@@ -208,8 +203,8 @@ class Command(BaseCommand):
                 transit_service_information = situation.findtext("ns12:transitServiceInformation", namespaces=namespaces)
                 transit_service_type = situation.findtext("ns12:transitServiceType", namespaces=namespaces)
 
-                # --- Create and save the TransitInformation object ---
-                TransitInformation.objects.update_or_create(
+                # --- Create and save the VtsSituation object ---
+                VtsSituation.objects.update_or_create(
                     situation_id=situation_id,
                     defaults={
                         'version': version,
