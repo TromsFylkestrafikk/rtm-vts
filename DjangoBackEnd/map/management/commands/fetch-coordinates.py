@@ -1,5 +1,6 @@
 import json
 import polyline
+import re
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
 from django.core.management.base import BaseCommand
@@ -48,19 +49,26 @@ class Command(BaseCommand):
                     encoded_points = points_on_link["points"]
                     decoded_coordinates = polyline.decode(encoded_points)
 
-                    # Create a feature for the bus route
-                    feature = {
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "LineString",
-                            "coordinates": [[lon, lat] for lat, lon in decoded_coordinates]  # Ensure [longitude, latitude] order
-                        },
-                        "properties": {
-                            "last_updated": "2025-03-21T08:48:18Z"  # Fake timestamp, adjust as needed
-                        }
-                    }
+                    # Extract the desired part of the ID using regex
+                    match = re.search(r":(\d+)_", route_data.get("id", ""))
+                    if match:
+                        trimmed_id = match.group(0)[1:-1]  # Get the part after ':' and before '_'
 
-                    geojson_data["features"].append(feature)
+                        # Create a feature for the bus route
+                        feature = {
+                            "type": "Feature",
+                            "geometry": {
+                                "type": "LineString",
+                                "coordinates": [[lon, lat] for lat, lon in decoded_coordinates]  # Ensure [longitude, latitude] order
+                            },
+                            "properties": {
+                                "route_id": trimmed_id  # Add the trimmed ID to the properties
+                            }
+                        }
+
+                        geojson_data["features"].append(feature)
+                    else:
+                        self.stdout.write(self.style.WARNING(f"Could not extract route ID for journey {route_data.get('id')}"))
                 else:
                     # Handle the case where no points are available for this route
                     self.stdout.write(self.style.WARNING(f"No points data found for journey ID {route_data.get('id')}"))
