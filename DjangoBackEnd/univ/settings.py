@@ -110,8 +110,12 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
-
-
+#MQTT settings(testing):
+MQTT_BROKER_HOST = 'localhost' # Or '127.0.0.1'
+MQTT_BROKER_PORT = 1883
+MQTT_USERNAME = None  # No username needed for default local setup
+MQTT_PASSWORD = None  # No password needed
+MQTT_BASE_COLLISION_TOPIC = 'vts/collisions' 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 

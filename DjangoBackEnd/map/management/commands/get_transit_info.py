@@ -2,7 +2,6 @@ import os
 import logging
 import requests
 import django
-import json
 from dateutil.parser import isoparse
 from datetime import timezone as dt_timezone
 import xml.etree.ElementTree as ET
@@ -21,7 +20,12 @@ django.setup()
 
 BaseURL = "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata/"
 logger = logging.getLogger(__name__)
-
+try:
+    import paho.mqtt.client as mqtt
+    mqtt_available = True
+except ImportError:
+    mqtt_available = False
+    mqtt = None # Define mqtt as None if import fails
 # Define namespaces (assuming these remain correct)
 namespaces = {
     'ns0': 'http://datex2.eu/schema/3/messageContainer',
@@ -96,8 +100,8 @@ class Command(BaseCommand):
     def process_response(self, response):
         """Parse the XML response, process situation records, create geometry objects, and update the database."""
         # Optional: Save debug response (same as before)
-        # with open("debug_response.xml", "w", encoding="utf-8") as f:
-        #     f.write(response.content.decode('utf-8'))
+        with open("debug_response.xml", "w", encoding="utf-8") as f:
+            f.write(response.content.decode('utf-8'))
         try:
             root = ET.fromstring(response.content)
         except ET.ParseError as e:

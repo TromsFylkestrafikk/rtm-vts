@@ -1,8 +1,10 @@
 import time
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-from map.models import DetectedCollision # Import the new storage model
+from map.models import DetectedCollision
 from map.utils import calculate_collisions_for_storage # Import the calculation function
+import logging
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Recalculates and updates the stored detected collisions between VTS points and bus routes.'
@@ -11,7 +13,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--tolerance',
             type=int,
-            default=50, # Default tolerance if not specified
+            # 300 meters can detect ferry abnormalies
+            default=300, # Default tolerance if not specified
             help='Distance tolerance in meters for collision detection.',
         )
         parser.add_argument(
@@ -20,94 +23,92 @@ class Command(BaseCommand):
             help='Do not clear existing collision data before inserting new data (use with caution).',
         )
 
-    @transaction.atomic # Ensure clearing and inserting happen together or not at all
     def handle(self, *args, **options):
         tolerance = options['tolerance']
         clear_existing = not options['no_clear']
         start_time = time.time()
 
-        self.stdout.write(f"Starting collision update process with tolerance {tolerance}m...")
+        logger.info(f"Running update_collisions. Tolerance={tolerance}, Clear Existing Data={clear_existing}")
+        self.stdout.write(f"Option --no-clear specified: {options['no_clear']}. Clear Existing Data set to: {clear_existing}")
 
         # --- Calculate New Collisions ---
-        # This is the potentially slow part
         calculated_data = calculate_collisions_for_storage(tolerance)
-        if not isinstance(calculated_data, list):
-             raise CommandError("Collision calculation function did not return a list.")
-
+        # ... (error checking for calculated_data) ...
         calculation_time = time.time()
         self.stdout.write(f"Calculation finished in {calculation_time - start_time:.2f} seconds. Found {len(calculated_data)} potential collisions.")
 
-        # --- Clear Old Data (Optional but Recommended for Refresh) ---
-        if clear_existing:
-            self.stdout.write("Clearing existing collision data...")
-            deleted_count, _ = DetectedCollision.objects.all().delete()
-            self.stdout.write(f"Deleted {deleted_count} old collision records.")
-        else:
-            self.stdout.write(self.style.WARNING("Skipping clearing of existing data (--no-clear specified)."))
-
-
-        # --- Store New Collision Data ---
-        self.stdout.write("Storing new collision data...")
-        collisions_to_create = []
         created_count = 0
-        skipped_count = 0 # Count duplicates if not clearing
+        skipped_count = 0 # For duplicates within calculation OR already existing
 
-        # Use a set to track pairs already added in this run if not clearing
-        # to avoid violating unique_together constraint if duplicates exist in calculated_data
-        seen_pairs = set()
+        # --- Database Operations ---
+        try:
+            with transaction.atomic():
+                existing_pairs_set = set() # Initialize
+                if clear_existing:
+                    self.stdout.write("Clearing existing collision data...")
+                    deleted_count, _ = DetectedCollision.objects.all().delete()
+                    self.stdout.write(f"Deleted {deleted_count} old collision records.")
+                else:
+                    # --- If not clearing, get existing pairs to avoid re-inserting ---
+                    self.stdout.write(self.style.WARNING("Skipping clearing. Fetching existing collision pairs..."))
+                    # Fetch tuple pairs for efficient lookup
+                    existing_pairs = DetectedCollision.objects.values_list(
+                        'transit_information_id',
+                        'bus_route_id'
+                    )
+                    existing_pairs_set = set(existing_pairs)
+                    self.stdout.write(f"Found {len(existing_pairs_set)} existing pairs in the database.")
+                    # --- End fetching existing pairs ---
 
-        for data in calculated_data:
-            pair = (data['transit_id'], data['route_id'])
-            if not clear_existing and pair in seen_pairs:
-                 skipped_count +=1
-                 continue
+                self.stdout.write("Preparing new collision data for storage...")
+                collisions_to_create = []
+                # Use a separate set to track pairs added *in this specific run*
+                # to handle potential duplicates within calculated_data itself.
+                seen_in_this_run = set()
 
-            collisions_to_create.append(
-                DetectedCollision(
-                    transit_information_id=data['transit_id'],
-                    bus_route_id=data['route_id'],
-                    transit_lon=data['transit_lon'],
-                    transit_lat=data['transit_lat'],
-                    tolerance_meters=tolerance
-                )
-            )
-            if not clear_existing:
-                seen_pairs.add(pair)
-
-
-        # Use bulk_create for much faster insertion
-        if collisions_to_create:
-            try:
-                created_objects = DetectedCollision.objects.bulk_create(collisions_to_create)
-                created_count = len(created_objects)
-            except Exception as e: # Catch potential integrity errors if unique_together violated
-                self.stderr.write(self.style.ERROR(f"Error during bulk create (potentially duplicate pairs?): {e}"))
-                self.stdout.write(self.style.WARNING("Attempting insert one-by-one to isolate issue (slower)..."))
-                created_count = 0
-                # Fallback to individual creates if bulk fails (much slower)
-                seen_pairs_individual = set() # Need separate tracking if not clearing
                 for data in calculated_data:
                     pair = (data['transit_id'], data['route_id'])
-                    if not clear_existing and pair in seen_pairs_individual: continue
-                    try:
-                         obj, created = DetectedCollision.objects.get_or_create(
-                              transit_information_id=data['transit_id'],
-                              bus_route_id=data['route_id'],
-                              defaults={
-                                    'transit_lon': data['transit_lon'],
-                                    'transit_lat': data['transit_lat'],
-                                    'tolerance_meters': tolerance
-                              }
-                         )
-                         if created:
-                            created_count += 1
-                         seen_pairs_individual.add(pair)
-                    except Exception as e_ind:
-                         self.stderr.write(f"Skipping pair {pair} due to error: {e_ind}")
 
+                    # --- Check 1: Already exists in DB (only if not clearing) ---
+                    if not clear_existing and pair in existing_pairs_set:
+                        skipped_count += 1
+                        continue # Skip if it already exists in the database
+
+                    # --- Check 2: Already added in this calculation run ---
+                    if pair in seen_in_this_run:
+                        # This handles duplicates *within* calculated_data
+                        # Might indicate an issue in calculation logic if it happens often
+                        logger.warning(f"Duplicate pair {pair} found within calculated_data. Skipping.")
+                        skipped_count += 1
+                        continue # Skip if already processed in this loop
+
+                    # --- If new, add to create list and track ---
+                    collisions_to_create.append(
+                        DetectedCollision(
+                            transit_information_id=data['transit_id'],
+                            bus_route_id=data['route_id'],
+                            transit_lon=data['transit_lon'],
+                            transit_lat=data['transit_lat'],
+                            tolerance_meters=tolerance
+                            # published_to_mqtt defaults to False
+                        )
+                    )
+                    seen_in_this_run.add(pair) # Track pair added in this run
+
+                if collisions_to_create:
+                    self.stdout.write(f"Bulk creating {len(collisions_to_create)} genuinely new collision records...")
+                    created_objects = DetectedCollision.objects.bulk_create(collisions_to_create)
+                    created_count = len(created_objects)
+                    self.stdout.write(f"Successfully stored {created_count} new collision records (marked as unpublished).")
+                else:
+                     self.stdout.write("No genuinely new collision records found to store.")
+
+        except Exception as e:
+            logger.error(f"Database operation failed: {e}", exc_info=True) # Log traceback
+            self.stderr.write(self.style.ERROR(f"Database operation failed: {e}"))
 
         end_time = time.time()
         self.stdout.write(self.style.SUCCESS(
             f"Collision update finished in {end_time - start_time:.2f} seconds. "
-            f"Stored: {created_count}. Skipped duplicates (if not clearing): {skipped_count}."
+            f"Stored: {created_count}. Skipped existing/duplicates: {skipped_count}."
         ))

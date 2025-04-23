@@ -101,9 +101,12 @@ class DetectedCollision(models.Model):
     transit_lat = models.FloatField()
     # Store when this collision record was created (when the check was run)
     detection_timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
-    # Optional: Store the tolerance used for this detection run
     tolerance_meters = models.IntegerField(default=50)
-
+    published_to_mqtt = models.BooleanField(
+        default=False,
+        db_index=True, # Index for faster querying of unpublished items
+        help_text="Flag indicating if this collision has been published via MQTT."
+    )
     class Meta:
         verbose_name = "Detected Collision"
         verbose_name_plural = "Detected Collisions"
@@ -114,4 +117,5 @@ class DetectedCollision(models.Model):
         ordering = ['-detection_timestamp', 'transit_information']
 
     def __str__(self):
-        return f"Collision: Transit {self.transit_information_id} near Route {self.bus_route_id} detected at {self.detection_timestamp}"
+        published_status = "[Published]" if self.published_to_mqtt else "[New]"
+        return f"Collision {published_status}: Transit {self.transit_information_id} near Route {self.bus_route_id} detected at {self.detection_timestamp}"
