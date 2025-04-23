@@ -54,9 +54,7 @@ These must be installed on your system **before** installing Python packages. In
     ```
     *(Ensure your `requirements.txt` file is up-to-date using `pip freeze > requirements.txt` after installing all packages.)*
 
-## Setup and Configuration
-
-### 1. Clone the Repository
+### 3 Clone the Repository
 
 ```bash
 # Using SSH (Recommended if you have keys setup)
@@ -66,3 +64,153 @@ git clone git@github.com:TromsFylkestrafikk/rtm-vts.git
 
 cd rtm-vts
 ```
+### 2. Configure Environment Variables
+This project uses a .env file in the project root directory to manage configuration.
+
+Install python-dotenv: (Should be in requirements.txt)
+
+pip install python-dotenv
+Use code with caution.
+Bash
+Create .env file: Copy the example file if it exists, otherwise create a new one:
+
+# If .env.example exists:
+cp .env.example .env
+# Otherwise:
+# touch .env (Linux/macOS) or create manually
+Use code with caution.
+Bash
+(A .env.example file listing all required variables is highly recommended)
+
+Edit .env and add your values:
+
+# Django Core
+SECRET_KEY='your_strong_random_secret_key' # Generate a real one for production!
+DEBUG=True # Set to False in production
+ALLOWED_HOSTS=127.0.0.1,localhost # Comma-separated, add production domain(s)
+
+# Database (SpatiaLite)
+DATABASE_NAME=db.sqlite3 # Or your preferred filename
+# CRITICAL FOR SPATIALITE (especially Windows/macOS):
+# Uncomment and set the *full path* to your mod_spatialite library file if needed
+# SPATIALITE_LIBRARY_PATH=/path/to/your/mod_spatialite.dll_or_dylib_or_so
+
+# VTS DATEX II API Credentials (Rename if needed for consistency)
+UserName_DATEX="your_vts_username"
+Password_DATEX="your_vts_password"
+
+# MQTT Broker Configuration
+MQTT_BROKER_HOST=localhost
+MQTT_BROKER_PORT=1883
+MQTT_USERNAME= # Leave blank if no auth
+MQTT_PASSWORD= # Leave blank if no auth
+MQTT_BASE_COLLISION_TOPIC=vts/collisions # Base topic for publications
+
+# CORS (Example for local development)
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000 # Adjust for your frontend
+# Or use CORS_ALLOW_ALL_ORIGINS=True for initial development (less secure)
+
+# Entur API (If fetch_entur_trips.py is used)
+# ET_CLIENT_NAME="your_entur_client_name"
+Use code with caution.
+Dotenv
+### 5. Set up MQTT Broker
+Ensure your chosen MQTT broker (e.g., Mosquitto) is installed and running according to its documentation. Check that it's listening on the configured host and port (e.g., localhost:1883).
+Database Setup
+Create Migrations (if models changed):
+```Bash
+python manage.py makemigrations map
+```
+Apply Migrations: This creates the database tables, including the necessary spatial metadata tables for SpatiaLite.
+```Bash
+python manage.py migrate
+```
+Initial Data Population
+Run these commands to populate the database with initial data:
+
+Import Bus Routes: (Requires the source GeoJSON file)
+
+# Example: Assuming the file is in the 'data' directory
+python manage.py import_bus_routes --file data/route_coordinates.geojson
+Use code with caution.
+Bash
+(Adjust the command and file path as necessary)
+
+Fetch Initial VTS Situations:
+
+python manage.py fetch_vts_situations
+Use code with caution.
+Bash
+Calculate Initial Collisions:
+Bash ´´´
+python manage.py update_collisions
+´´´
+(Note: This command creates collision records marked as unpublished)
+
+Running the Application
+1. Run the Development Server
+Bash ´´´
+python manage.py runserver
+´´´
+Access the web interface (if any) typically at http://127.0.0.1:8000/.
+
+2. Run the Periodic Publisher (Crucial for MQTT Updates)
+The publish_new_collisions command needs to run periodically (e.g., every 5 minutes) to send updates via MQTT. This does not run automatically with runserver.
+
+For Development: You can run it manually in a separate terminal (ensure your virtual environment is activated):
+```Bash
+python manage.py publish_new_collisions
+```
+For Production/Continuous Operation: Schedule this command using cron (Linux/macOS), systemd timers (Linux), Windows Task Scheduler, or a Django scheduling library (Celery Beat, Django-Q).
+
+Example Cron Job (Linux/macOS):
+
+# Edit crontab: crontab -e
+# Run publish command every 5 minutes, log output
+*/5 * * * * /path/to/your/project/.venv/bin/python /path/to/your/project/manage.py publish_new_collisions >> /path/to/your/project/logs/publish_collisions.log 2>&1
+
+### Key Components Models (map/models.py)
+* **VtsSituation:** Stores road situation data fetched from the VTS DATEX II API.
+
+* **BusRoute:** Stores static bus route geometry and metadata.
+
+* **DetectedCollision:** Stores calculated collision instances between VtsSituation and BusRoute, including MQTT publishing status.
+
+* ApiMetadata: Stores general metadata (e.g., last VTS fetch time).
+
+### Management Commands (map/management/commands/)
+* **fetch_vts_situations.py:** Fetches data from VTS API and saves to VtsSituation.
+
+* **import_bus_routes.py:** Imports routes from GeoJSON into BusRoute.
+
+* **calculate_and_store_collisions.py:** Calculates and saves/updates DetectedCollision records. Use --no-clear to avoid deleting existing collisions.
+
+* **publish_new_collisions.py:** Checks for unpublished collisions and sends them via MQTT. Needs to be run periodically.
+
+* **purge_transitinformation.py** (or similar name): Deletes data from VtsSituation.
+
+* **fetch_entur_trips.py:** Fetches trip data from Entur.
+
+* **fetch_coordinates.py:** Purpose needs clarification in the command's help text.
+
+### MQTT Publishing
+Broker: Connects to the broker defined in .env.
+
+Topics: Publishes new collisions to topics structured like:
+{MQTT_BASE_COLLISION_TOPIC}/route/{bus_route_id}/severity/{severity}/filter/{filter_used}
+(e.g., vts/collisions/route/123/severity/high/filter/roadworks)
+Missing values for severity/filter are replaced with _unknown_.
+
+Payload: JSON containing details of the collision (IDs, location, timestamp, etc.).
+
+### Usage Notes
+Data Accuracy: The application displays data sourced from VTS and Entur. Accuracy depends on the source providers.
+
+Security: Keep API credentials and your Django SECRET_KEY secure. Do not commit them to version control.
+
+### Credits
+Data Source: Norwegian Public Roads Administration (Statens vegvesen), Entur.
+
+Map Tiles: https://victor.tftservice.no
+
+Developers: Lga239, agu078

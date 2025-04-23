@@ -551,7 +551,7 @@ def get_stored_collisions_view(request):
     # Note: Django automatically gives you the foreign key ID when you access
     # the ForeignKey field name in .values()
     collision_data = list(queryset.values(
-        'VtsSituation', # Gets the ID of the related VtsSituation object
+        'transit_information_id', # Gets the ID of the related VtsSituation object
         'bus_route_id',           # Gets the ID of the related BusRoute object
         'transit_lon',
         'transit_lat',

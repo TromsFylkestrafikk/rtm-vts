@@ -5,7 +5,6 @@ from django.utils import timezone
 class ApiMetadata(models.Model):
     """
     Model to store metadata related to API interactions.
-    (No changes needed here)
     """
     key = models.CharField(max_length=255, unique=True)
     value = models.TextField()
