@@ -83,7 +83,7 @@ Bash
 (A .env.example file listing all required variables is highly recommended)
 
 Edit .env and add your values:
-
+```Bash
 # Django Core
 SECRET_KEY='your_strong_random_secret_key' # Generate a real one for production!
 DEBUG=True # Set to False in production
@@ -112,7 +112,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000 # Adjust for yo
 
 # Entur API (If fetch_entur_trips.py is used)
 # ET_CLIENT_NAME="your_entur_client_name"
-Use code with caution.
+```
 Dotenv
 ### 5. Set up MQTT Broker
 Ensure your chosen MQTT broker (e.g., Mosquitto) is installed and running according to its documentation. Check that it's listening on the configured host and port (e.g., localhost:1883).
@@ -127,34 +127,32 @@ python manage.py migrate
 ```
 Initial Data Population
 Run these commands to populate the database with initial data:
-
 Import Bus Routes: (Requires the source GeoJSON file)
 
 # Example: Assuming the file is in the 'data' directory
+```Bash
 python manage.py import_bus_routes --file data/route_coordinates.geojson
-Use code with caution.
-Bash
+```
 (Adjust the command and file path as necessary)
 
 Fetch Initial VTS Situations:
-
+```Bash
 python manage.py fetch_vts_situations
-Use code with caution.
-Bash
+```
 Calculate Initial Collisions:
-Bash ´´´
+```Bash
 python manage.py update_collisions
-´´´
+```
 (Note: This command creates collision records marked as unpublished)
 
-Running the Application
-1. Run the Development Server
-Bash ´´´
+## Running the Application
+### 1. Run the Development Server
+```Bash
 python manage.py runserver
-´´´
-Access the web interface (if any) typically at http://127.0.0.1:8000/.
+```
+Access the web interface at http://127.0.0.1:8000/.
 
-2. Run the Periodic Publisher (Crucial for MQTT Updates)
+### 2. Run the Periodic Publisher (Crucial for MQTT Updates)
 The publish_new_collisions command needs to run periodically (e.g., every 5 minutes) to send updates via MQTT. This does not run automatically with runserver.
 
 For Development: You can run it manually in a separate terminal (ensure your virtual environment is activated):
@@ -165,8 +163,8 @@ For Production/Continuous Operation: Schedule this command using cron (Linux/mac
 
 Example Cron Job (Linux/macOS):
 
-# Edit crontab: crontab -e
-# Run publish command every 5 minutes, log output
+Edit crontab: crontab -e
+Run publish command every 5 minutes, log output
 */5 * * * * /path/to/your/project/.venv/bin/python /path/to/your/project/manage.py publish_new_collisions >> /path/to/your/project/logs/publish_collisions.log 2>&1
 
 ### Key Components Models (map/models.py)
@@ -175,42 +173,31 @@ Example Cron Job (Linux/macOS):
 * **BusRoute:** Stores static bus route geometry and metadata.
 
 * **DetectedCollision:** Stores calculated collision instances between VtsSituation and BusRoute, including MQTT publishing status.
-
-* ApiMetadata: Stores general metadata (e.g., last VTS fetch time).
+* **ApiMetadata:** Stores general metadata (e.g., last VTS fetch time).
 
 ### Management Commands (map/management/commands/)
 * **fetch_vts_situations.py:** Fetches data from VTS API and saves to VtsSituation.
-
 * **import_bus_routes.py:** Imports routes from GeoJSON into BusRoute.
-
 * **calculate_and_store_collisions.py:** Calculates and saves/updates DetectedCollision records. Use --no-clear to avoid deleting existing collisions.
-
 * **publish_new_collisions.py:** Checks for unpublished collisions and sends them via MQTT. Needs to be run periodically.
-
 * **purge_transitinformation.py** (or similar name): Deletes data from VtsSituation.
-
 * **fetch_entur_trips.py:** Fetches trip data from Entur.
-
 * **fetch_coordinates.py:** Purpose needs clarification in the command's help text.
 
 ### MQTT Publishing
 Broker: Connects to the broker defined in .env.
-
 Topics: Publishes new collisions to topics structured like:
 {MQTT_BASE_COLLISION_TOPIC}/route/{bus_route_id}/severity/{severity}/filter/{filter_used}
 (e.g., vts/collisions/route/123/severity/high/filter/roadworks)
 Missing values for severity/filter are replaced with _unknown_.
-
 Payload: JSON containing details of the collision (IDs, location, timestamp, etc.).
 
 ### Usage Notes
 Data Accuracy: The application displays data sourced from VTS and Entur. Accuracy depends on the source providers.
-
 Security: Keep API credentials and your Django SECRET_KEY secure. Do not commit them to version control.
 
 ### Credits
 Data Source: Norwegian Public Roads Administration (Statens vegvesen), Entur.
-
 Map Tiles: https://victor.tftservice.no
-
 Developers: Lga239, agu078
+Input for progression from: tfk-kaare
