@@ -52,7 +52,6 @@ These must be installed on your system **before** installing Python packages. In
     ```bash
     pip install -r requirements.txt
     ```
-    *(Ensure your `requirements.txt` file is up-to-date using `pip freeze > requirements.txt` after installing all packages.)*
 
 ### 3 Clone the Repository
 
@@ -68,19 +67,9 @@ cd rtm-vts
 This project uses a .env file in the project root directory to manage configuration.
 
 Install python-dotenv: (Should be in requirements.txt)
-
+```Bash
 pip install python-dotenv
-Use code with caution.
-Bash
-Create .env file: Copy the example file if it exists, otherwise create a new one:
-
-# If .env.example exists:
-cp .env.example .env
-# Otherwise:
-# touch .env (Linux/macOS) or create manually
-Use code with caution.
-Bash
-(A .env.example file listing all required variables is highly recommended)
+```
 
 Edit .env and add your values:
 ```Bash
@@ -169,12 +158,9 @@ Run publish command every 5 minutes, log output
 
 ### Key Components Models (map/models.py)
 * **VtsSituation:** Stores road situation data fetched from the VTS DATEX II API.
-
 * **BusRoute:** Stores static bus route geometry and metadata.
-
 * **DetectedCollision:** Stores calculated collision instances between VtsSituation and BusRoute, including MQTT publishing status.
 * **ApiMetadata:** Stores general metadata (e.g., last VTS fetch time).
-
 ### Management Commands (map/management/commands/)
 * **fetch_vts_situations.py:** Fetches data from VTS API and saves to VtsSituation.
 * **import_bus_routes.py:** Imports routes from GeoJSON into BusRoute.
@@ -200,4 +186,4 @@ Security: Keep API credentials and your Django SECRET_KEY secure. Do not commit 
 Data Source: Norwegian Public Roads Administration (Statens vegvesen), Entur.
 Map Tiles: https://victor.tftservice.no
 Developers: Lga239, agu078
-Input for progression from: tfk-kaare
+Input for progression from: tfk-kaare, Troms Fylkeskommune developer team
