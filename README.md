@@ -102,10 +102,9 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000 # Adjust for yo
 # Entur API (If fetch_entur_trips.py is used)
 # ET_CLIENT_NAME="your_entur_client_name"
 ```
-Dotenv
 ### 5. Set up MQTT Broker
 Ensure your chosen MQTT broker (e.g., Mosquitto) is installed and running according to its documentation. Check that it's listening on the configured host and port (e.g., localhost:1883).
-Database Setup
+# Database Setup
 Create Migrations (if models changed):
 ```Bash
 python manage.py makemigrations map
@@ -118,7 +117,6 @@ Initial Data Population
 Run these commands to populate the database with initial data:
 Import Bus Routes: (Requires the source GeoJSON file)
 
-# Example: Assuming the file is in the 'data' directory
 ```Bash
 python manage.py import_bus_routes --file data/route_coordinates.geojson
 ```
@@ -180,10 +178,15 @@ Payload: JSON containing details of the collision (IDs, location, timestamp, etc
 
 ### Usage Notes
 Data Accuracy: The application displays data sourced from VTS and Entur. Accuracy depends on the source providers.
-Security: Keep API credentials and your Django SECRET_KEY secure. Do not commit them to version control.
+Security: Keep API credentials and your Django SECRET_KEY secure.
+
+Do not commit them to version control.
 
 ### Credits
 Data Source: Norwegian Public Roads Administration (Statens vegvesen), Entur.
+
 Map Tiles: https://victor.tftservice.no
+
 Developers: Lga239, agu078
+
 Input for progression from: tfk-kaare, Troms Fylkeskommune developer team
