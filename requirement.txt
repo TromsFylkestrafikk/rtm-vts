@@ -12,5 +12,6 @@ sqlparse==0.5.3
 typing_extensions==4.12.2
 urllib3==2.3.0
 polyline==2.0.2
-paho-mtqq==2.1.0
+paho-mqtt==2.1.0
 gql==3.5.2
+python-dateutil==2.9.0

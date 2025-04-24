@@ -7,12 +7,10 @@ This Django web application provides a real-time map visualization integrating t
 The core functionalities include:
 
 *   **Fetching VTS Data:** Regularly retrieves current road situation data (road work, accidents, closures, etc.) from the VTS DATEX II API.
-*   **Bus Route Management:** Imports static bus route geometries from external sources (e.g., GeoJSON).
+*   **Bus Route Management:** Imports bus route geometries from external sources (e.g., GeoJSON).
 *   **Collision Detection:** Calculates potential proximity conflicts (collisions within a tolerance) between VTS situation points/paths and bus route paths.
 *   **Real-time Publishing:** Publishes newly detected collisions via MQTT for consumption by external clients or dashboards.
 *   **Interactive Map Display:** Visualizes VTS situations and bus routes on an interactive map.
-*   **(Potential) API Endpoint:** (If implemented) Provides collision data via a REST API.
-*   **(Potential) Drawing Tools:** Allows users to draw custom features on the map (as described in the original README).
 
 ## Requirements
 
@@ -24,14 +22,13 @@ These must be installed on your system **before** installing Python packages. In
 *   **GDAL (Geospatial Data Abstraction Library):** Essential for GeoDjango.
     *   **Linux (Debian/Ubuntu):** `sudo apt update && sudo apt install gdal-bin libgdal-dev`
     *   **macOS (Homebrew):** `brew update && brew install gdal`
-    *   **Windows:** Use pre-compiled binaries (e.g., [OSGeo4W](https://trac.osgeo.org/osgeo4w/)) or Conda (`conda install -c conda-forge gdal`).
+    *   **Windows(not tested):** Use pre-compiled binaries (e.g., [OSGeo4W](https://trac.osgeo.org/osgeo4w/)) or Conda (`conda install -c conda-forge gdal`).
 *   **SpatiaLite Library (mod_spatialite):** Required for the SpatiaLite database backend.
     *   **Linux (Debian/Ubuntu):** `sudo apt install libsqlite3-mod-spatialite`
     *   **macOS (Homebrew):** `brew install libspatialite`
-    *   **Windows:** Download `mod_spatialite.dll` ([gaia-gis.it](https://www.gaia-gis.it/fossil/libspatialite/)), install via OSGeo4W/Conda, or ensure its location is set via the `SPATIALITE_LIBRARY_PATH` environment variable.
+    *   **Windows(not tested):** Download `mod_spatialite.dll` ([gaia-gis.it](https://www.gaia-gis.it/fossil/libspatialite/)), install via OSGeo4W/Conda, or ensure its location is set via the `SPATIALITE_LIBRARY_PATH` environment variable.
 *   **MQTT Broker:** A running MQTT broker is needed for the real-time publishing feature.
     *   **Recommendation:** [Mosquitto](https://mosquitto.org/download/) for local development. Install via package manager (`apt`, `brew`) or download the installer for Windows.
-    *   Ensure the broker is running and accessible from where you run the Django application.
 
 ### 2. Python Environment & Packages
 
@@ -95,10 +92,6 @@ MQTT_USERNAME= # Leave blank if no auth
 MQTT_PASSWORD= # Leave blank if no auth
 MQTT_BASE_COLLISION_TOPIC=vts/collisions # Base topic for publications
 
-# CORS (Example for local development)
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000 # Adjust for your frontend
-# Or use CORS_ALLOW_ALL_ORIGINS=True for initial development (less secure)
-
 # Entur API (If fetch_entur_trips.py is used)
 # ET_CLIENT_NAME="your_entur_client_name"
 ```
@@ -130,7 +123,6 @@ Calculate Initial Collisions:
 ```Bash
 python manage.py update_collisions
 ```
-(Note: This command creates collision records marked as unpublished)
 
 ## Running the Application
 ### 1. Run the Development Server
@@ -152,7 +144,7 @@ Example Cron Job (Linux/macOS):
 
 Edit crontab: crontab -e
 Run publish command every 5 minutes, log output
-*/5 * * * * /path/to/your/project/.venv/bin/python /path/to/your/project/manage.py publish_new_collisions >> /path/to/your/project/logs/publish_collisions.log 2>&1
+*/5 * * * * /path/to/your/project/.venv/bin/python /path/to/your/project/manage.py run_cron >> /path/to/your/project/logs/publish_collisions.log 2>&1
 
 ### Key Components Models (map/models.py)
 * **VtsSituation:** Stores road situation data fetched from the VTS DATEX II API.
@@ -166,27 +158,24 @@ Run publish command every 5 minutes, log output
 * **publish_new_collisions.py:** Checks for unpublished collisions and sends them via MQTT. Needs to be run periodically.
 * **purge_transitinformation.py** (or similar name): Deletes data from VtsSituation.
 * **fetch_entur_trips.py:** Fetches trip data from Entur.
-* **fetch_coordinates.py:** Purpose needs clarification in the command's help text.
+* **fetch_coordinates.py:** Fetches bus route coordinates.
 
 ### MQTT Publishing
-Broker: Connects to the broker defined in .env.
-Topics: Publishes new collisions to topics structured like:
+* Broker: Connects to the broker defined in .env.
+
+* Topics: Publishes new collisions to topics structured like:
+
 {MQTT_BASE_COLLISION_TOPIC}/route/{bus_route_id}/severity/{severity}/filter/{filter_used}
-(e.g., vts/collisions/route/123/severity/high/filter/roadworks)
-Missing values for severity/filter are replaced with _unknown_.
-Payload: JSON containing details of the collision (IDs, location, timestamp, etc.).
+
+(e.g., vts/collisions/route/123/severity/high/filter/accident) OR 
+(e.g., vts/collisions/+/123/severity/+/filter/+)
+* Payload: JSON containing details of the collision (IDs, location, timestamp, etc.).
 
 ### Usage Notes
 Data Accuracy: The application displays data sourced from VTS and Entur. Accuracy depends on the source providers.
-Security: Keep API credentials and your Django SECRET_KEY secure.
-
-Do not commit them to version control.
 
 ### Credits
-Data Source: Norwegian Public Roads Administration (Statens vegvesen), Entur.
-
-Map Tiles: https://victor.tftservice.no
-
-Developers: Lga239, agu078
-
-Input for progression from: tfk-kaare, Troms Fylkeskommune developer team
+* Data Source: Norwegian Public Roads Administration (Statens vegvesen), Entur.
+* Map Tiles: https://victor.tftservice.no
+* Developers: Lga239, agu078
+* Input for progression from: tfk-kaare, Troms Fylkeskommune developer team
