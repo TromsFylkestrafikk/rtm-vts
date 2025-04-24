@@ -7,7 +7,7 @@ from django.contrib.gis.geos import LineString, GEOSException
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from dateutil.parser import isoparse # For parsing ISO 8601 timestamps
-from django.db import transaction # Import transaction
+from django.db import transaction, IntegrityError
 
 # Adjust the import path if your model is elsewhere
 from map.models import BusRoute
@@ -103,7 +103,14 @@ class Command(BaseCommand):
                  logger.warning(f"Skipping feature {feature_index}: Invalid or insufficient coordinates for LineString. Coords: {coords}")
                  skipped_count += 1
                  continue
-
+            route_id_str = properties.get('route_id')
+            # Check if route_id is present (since we made it required in the model)
+            if not route_id_str:
+                logger.warning(f"Skipping feature {feature_index}: Missing required 'route_id' in properties.")
+                skipped_count += 1
+                continue
+            # Convert to string explicitly in case it's a number in JSON
+            route_id_str = str(route_id_str)
             # --- Extract Properties ---
             # Use properties.get('key', default_value)
             route_version = properties.get('version') # Or use default_version if provided via args
@@ -133,6 +140,7 @@ class Command(BaseCommand):
                 # --- Create new BusRoute instance ---
                 # Since we don't have a unique key other than PK, we create a new entry for each feature.
                 new_route = BusRoute(
+                    route_id=route_id_str,
                     path=route_path,
                     version=route_version, # Will be None if not in properties or defaulted
                     last_updated=update_time,
@@ -146,6 +154,10 @@ class Command(BaseCommand):
             except (ValidationError, GEOSException) as e:
                 logger.error(f"Skipping feature {feature_index}: Validation or Geometry error - {e}. Coordinates start: {str(coords)[:100]}...")
                 skipped_count += 1
+            except IntegrityError as e:
+                 # Specifically catch IntegrityError, likely due to duplicate unique route_id
+                 logger.error(f"Skipping feature {feature_index} (Route ID: {route_id_str}): Database integrity error (likely duplicate route_id) - {e}")
+                 skipped_count += 1
             except Exception as e:
                 # Catch other unexpected errors during processing/saving a single feature
                 logger.exception(f"Skipping feature {feature_index}: Unexpected error - {e}") # Use logger.exception to include traceback

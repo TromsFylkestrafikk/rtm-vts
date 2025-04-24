@@ -54,7 +54,13 @@ class BusRoute(models.Model):
     Stores the static geometry (path) of a specific bus route line.
     """
     # Primary Key (id) is added automatically by Django
-
+    route_id = models.CharField(
+        max_length=50, # Adjust max_length if route IDs can be longer
+        db_index=True, # Index for faster lookups if needed
+        null=True,     # <--- Add temporarily
+        blank=True,    # <--- Add temporarily (good practice with null=True)
+        help_text="Unique identifier for the bus route (e.g., '100', 'TFT:Line:34') from the source data"
+    )
     path = gis_models.LineStringField(
         srid=4326,
         help_text="Route geometry as a LineString (SRID 4326 WGS84)"
@@ -72,11 +78,12 @@ class BusRoute(models.Model):
 
     def __str__(self):
         # Using the primary key as a simple identifier
-        return f"Bus Route {self.pk}"
+        return f"Bus Route {self.route_id} (ID: {self.pk})"
 
     class Meta:
         verbose_name = "Bus Route"
         verbose_name_plural = "Bus Routes"
+        ordering = ['route_id']
 
 class DetectedCollision(models.Model):
     """
@@ -101,6 +108,7 @@ class DetectedCollision(models.Model):
     # Store when this collision record was created (when the check was run)
     detection_timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     tolerance_meters = models.IntegerField(default=50)
+    unique_together = ('transit_information', 'bus_route')
     published_to_mqtt = models.BooleanField(
         default=False,
         db_index=True, # Index for faster querying of unpublished items

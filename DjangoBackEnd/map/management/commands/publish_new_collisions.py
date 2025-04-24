@@ -84,8 +84,17 @@ class Command(BaseCommand):
                     "severity": collision.transit_information.severity,
                     "filter_used": collision.transit_information.filter_used,
                     "situation_id": collision.transit_information.situation_id,
+                    "Bus_number": collision.bus_route.route_id if collision.bus_route else None, # Corrected key name
+                    "comment": collision.transit_information.comment
                 }
-                payload_json = json.dumps(payload)
+                # --- Serialize to JSON, ensuring UTF-8 characters are kept ---
+                try:
+                    payload_json = json.dumps(payload, ensure_ascii=False) # <--- ADD ensure_ascii=False
+                except TypeError as e:
+                    # Handle potential issues if data in payload isn't serializable
+                    self.stderr.write(f"Error serializing payload for collision {collision.id}: {e}")
+                    failed_count += 1
+                    continue # Skip this collision
 
                 # Construct topic
                 bus_route_id_str = self._sanitize_topic_segment(collision.bus_route_id)
