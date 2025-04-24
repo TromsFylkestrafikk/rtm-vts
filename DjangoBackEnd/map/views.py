@@ -75,16 +75,6 @@ def busroute(request):
                     # Skip this feature if geometry is invalid
                     continue
 
-                # --- Method 2: Manual Construction (Less common for LineString) ---
-                # If .geojson property wasn't available or caused issues:
-                # geometry_dict = {
-                #     "type": "LineString",
-                #     # route.path.coords gives a tuple of coordinate tuples: ((lon1, lat1), (lon2, lat2), ...)
-                #     # JSON standard typically uses lists: [[lon1, lat1], [lon2, lat2], ...]
-                #     # json.dumps usually handles tuples fine, but list comprehension is explicit:
-                #     "coordinates": [list(coord) for coord in route.path.coords]
-                # }
-
                 # Construct the GeoJSON Feature object
                 feature = {
                     "type": "Feature",
@@ -124,6 +114,8 @@ def busroute(request):
         print(f"Error generating bus route GeoJSON: {e}") # Basic error logging
         # Return a generic error response
         return JsonResponse({"error": "An internal server error occurred while fetching route data."}, status=500)
+    
+    
 def test_view(request):
     return JsonResponse({'message': 'Test path is working!'})
 

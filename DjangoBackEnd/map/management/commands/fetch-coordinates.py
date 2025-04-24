@@ -1,6 +1,7 @@
 import json
 import polyline
 import re
+import os
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
 from django.core.management.base import BaseCommand
