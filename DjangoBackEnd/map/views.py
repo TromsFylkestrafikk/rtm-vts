@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.urls import path
 from django.http import HttpResponse,JsonResponse
 from django.template import loader
-from .models import TransitInformation, BusRoute, DetectedCollision
+from .models import VtsSituation, BusRoute, DetectedCollision
 from django.contrib.gis.measure import D
 import ast  # Safe alternative to eval() for string-to-list conversion
 from .utils import get_trip_geojson 
@@ -134,7 +134,7 @@ def get_filter_options_from_db(request):
     Retrieve unique filter options for transit information.
 
     This function queries the database to retrieve unique values for **counties** and 
-    **situation types** from the `TransitInformation` model. The results are returned 
+    **situation types** from the `VtsSituation` model. The results are returned 
     as a JSON response, making them useful for populating dropdown filters in a frontend UI.
 
     Parameters
@@ -165,13 +165,13 @@ def get_filter_options_from_db(request):
     ```
     '''
     try:
-        counties = TransitInformation.objects.values_list('area_name', flat=True).distinct()
+        counties = VtsSituation.objects.values_list('area_name', flat=True).distinct()
         counties = [county for county in counties if county]
         
-        situation_types = TransitInformation.objects.values_list('filter_used', flat=True).distinct()
+        situation_types = VtsSituation.objects.values_list('filter_used', flat=True).distinct()
         situation_types = [type for type in situation_types if type]
         
-        severities = TransitInformation.objects.values_list('severity', flat=True).distinct()
+        severities = VtsSituation.objects.values_list('severity', flat=True).distinct()
         severities = [severity for severity in severities if severity]
         
         return JsonResponse({
@@ -183,17 +183,17 @@ def get_filter_options_from_db(request):
         return JsonResponse({'error': str(e)}, status=500)
 def get_filter_options(request):
     """
-    Retrieve unique filter options directly from the TransitInformation model.
+    Retrieve unique filter options directly from the VtsSituation model.
     """
     try:
         # Use distinct() on the database fields
-        counties_qs = TransitInformation.objects.values_list('area_name', flat=True).distinct().order_by('area_name')
+        counties_qs = VtsSituation.objects.values_list('area_name', flat=True).distinct().order_by('area_name')
         counties = [county for county in counties_qs if county] # Remove None/empty
 
-        situation_types_qs = TransitInformation.objects.values_list('filter_used', flat=True).distinct().order_by('filter_used')
+        situation_types_qs = VtsSituation.objects.values_list('filter_used', flat=True).distinct().order_by('filter_used')
         situation_types = [stype for stype in situation_types_qs if stype] # Remove None/empty
 
-        severities_qs = TransitInformation.objects.values_list('severity', flat=True).distinct().order_by('severity')
+        severities_qs = VtsSituation.objects.values_list('severity', flat=True).distinct().order_by('severity')
         severities = [sev for sev in severities_qs if sev] # Remove None/empty
 
         return JsonResponse({
@@ -245,7 +245,7 @@ def location_geojson(request):
     Generate a GeoJSON FeatureCollection containing transit location data
     using GeoDjango model fields and functions.
 
-    Retrieves transit data from TransitInformation, filters based on query
+    Retrieves transit data from VtsSituation, filters based on query
     parameters (county, situation_type, severity), and formats Points
     (from 'location' field) and LineStrings (from 'path' field) directly
     into GeoJSON features. Assumes geometries are stored in SRID 4326 (WGS84).
@@ -264,7 +264,7 @@ def location_geojson(request):
     severity = request.GET.get('severity', None)
 
     # Start with base queryset
-    locations_qs = TransitInformation.objects.all()
+    locations_qs = VtsSituation.objects.all()
 
     # Apply filters if parameters are provided
     if county:
@@ -398,7 +398,7 @@ def find_all_collisions(distance_meters=20):
         projected_srid = 32633 # Example: UTM Zone 33N
 
         # Get the actual database table names from the models' metadata
-        transit_table = transit_table = TransitInformation._meta.db_table
+        transit_table = transit_table = VtsSituation._meta.db_table
         route_table = BusRoute._meta.db_table
 
         # Use Django's connection cursor for safe parameterization
@@ -471,7 +471,7 @@ def find_all_collisions_details(distance_meters=20):
 
         # --- Get table names ---
         try:
-            transit_table = TransitInformation._meta.db_table
+            transit_table = VtsSituation._meta.db_table
             route_table = BusRoute._meta.db_table
         except AttributeError as meta_err:
             print(f"Error getting table names from model metadata: {meta_err}")
@@ -543,7 +543,7 @@ def get_stored_collisions_view(request):
     # Note: Django automatically gives you the foreign key ID when you access
     # the ForeignKey field name in .values()
     collision_data = list(queryset.values(
-        'transit_information_id', # Gets the ID of the related TransitInformation object
+        'transit_information_id', # Gets the ID of the related VtsSituation object
         'bus_route_id',           # Gets the ID of the related BusRoute object
         'transit_lon',
         'transit_lat',

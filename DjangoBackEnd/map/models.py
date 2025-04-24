@@ -5,7 +5,6 @@ from django.utils import timezone
 class ApiMetadata(models.Model):
     """
     Model to store metadata related to API interactions.
-    (No changes needed here)
     """
     key = models.CharField(max_length=255, unique=True)
     value = models.TextField()
@@ -14,7 +13,7 @@ class ApiMetadata(models.Model):
         return f"{self.key}: {self.value}"
 
 
-class TransitInformation(models.Model):
+class VtsSituation(models.Model):
     """
     Model to store transit situation information fetched from the VTS API,
     using GeoDjango fields for spatial data.
@@ -81,11 +80,11 @@ class BusRoute(models.Model):
 
 class DetectedCollision(models.Model):
     """
-    Stores pre-calculated collision instances between TransitInformation points
+    Stores pre-calculated collision instances between VtsSituation points
     and BusRoute paths. Populated by a background task/management command.
     """
     transit_information = models.ForeignKey(
-        TransitInformation,
+        VtsSituation,
         on_delete=models.CASCADE, # Or models.SET_NULL if you want to keep record if VTS msg deleted
         related_name='detected_collisions',
         db_index=True

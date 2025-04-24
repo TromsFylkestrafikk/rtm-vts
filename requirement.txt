@@ -13,3 +13,4 @@ typing_extensions==4.12.2
 urllib3==2.3.0
 polyline==2.0.2
 paho-mtqq==2.1.0
+gql==3.5.2

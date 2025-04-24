@@ -7,8 +7,8 @@ from gql.transport.requests import RequestsHTTPTransport
 from django.core.management.base import BaseCommand
 from django.conf import settings
 
-JSON_FILE_PATH = os.path.join(settings.BASE_DIR,"route_coordinates.geojson")
-# "/home/alexander/rtm-vts/DjangoBackEnd/route_coordinates.geojson"  # Output as .geojson
+OUTPUT_DIRECTORY = settings.BASE_DIR / "data"
+JSON_FILE_PATH = OUTPUT_DIRECTORY / "route_coordinates.geojson"
 
 class Command(BaseCommand):
     help = "Fetch static bus route coordinates for all bus lines in Troms"

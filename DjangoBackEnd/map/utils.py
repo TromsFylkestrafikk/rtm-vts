@@ -1,7 +1,7 @@
 import requests
 import json
 import polyline
-from map.models import BusRoute, TransitInformation
+from map.models import BusRoute, VtsSituation
 from django.db import connection
 from django.contrib.gis.geos import Polygon
 import time
@@ -122,7 +122,7 @@ def calculate_collisions_for_storage(distance_meters: int = 50) -> list:
     print(f"Calculating collisions for storage (Tolerance: {distance_meters}m, Area: Troms BBOX)...")
 
     try:
-        transit_table = TransitInformation._meta.db_table
+        transit_table = VtsSituation._meta.db_table
         route_table = BusRoute._meta.db_table
         bbox_wkt = TROMS_BBOX_POLYGON.wkt
         bbox_srid = TROMS_BBOX_POLYGON.srid # Should be 4326

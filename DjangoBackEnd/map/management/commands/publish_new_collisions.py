@@ -4,7 +4,7 @@ import logging
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.db import transaction
-from map.models import DetectedCollision, TransitInformation # Import both
+from map.models import DetectedCollision
 
 try:
     import paho.mqtt.client as mqtt
