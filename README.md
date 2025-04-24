@@ -1,4 +1,4 @@
-# RTM-VTS: Real-Time Map for VTS Situations and Bus Collisions
+# RTM-VTS: pub-sub system/map for VTS Situations and Bus/Ferry Collisions
 
 ## Overview
 
@@ -29,7 +29,7 @@ These must be installed on your system **before** installing Python packages. In
     *   **Windows(not tested):** Download `mod_spatialite.dll` ([gaia-gis.it](https://www.gaia-gis.it/fossil/libspatialite/)), install via OSGeo4W/Conda, or ensure its location is set via the `SPATIALITE_LIBRARY_PATH` environment variable.
 *   **MQTT Broker:** A running MQTT broker is needed for the real-time publishing feature.
     *   **Recommendation:** [Mosquitto](https://mosquitto.org/download/) for local development. Install via package manager (`apt`, `brew`) or download the installer for Windows.
-
+* Password from "Statens vegvesen" for datex II API access, you should have gotten an email from Kåre.
 ### 2. Python Environment & Packages
 
 *   **Virtual Environment:** Strongly recommended.
@@ -45,9 +45,9 @@ These must be installed on your system **before** installing Python packages. In
     # Windows (PowerShell)
     # .\.venv\Scripts\Activate.ps1
     ```
-*   **Python Packages:** Install using the provided `requirements.txt`:
+*   **Python Packages:** Install using the provided `requirement.txt`:
     ```bash
-    pip install -r requirements.txt
+    pip install -r requirement.txt
     ```
 
 ### 3 Clone the Repository
@@ -111,6 +111,10 @@ Run these commands to populate the database with initial data:
 Import Bus Routes: (Requires the source GeoJSON file)
 
 ```Bash
+python manage.py fetch-coordinates
+```
+
+```Bash
 python manage.py import_bus_routes --file data/route_coordinates.geojson
 ```
 (Adjust the command and file path as necessary)
@@ -136,9 +140,9 @@ The publish_new_collisions command needs to run periodically (e.g., every 5 minu
 
 For Development: You can run it manually in a separate terminal (ensure your virtual environment is activated):
 ```Bash
-python manage.py publish_new_collisions
+python manage.py run_cron
 ```
-For Production/Continuous Operation: Schedule this command using cron (Linux/macOS), systemd timers (Linux), Windows Task Scheduler, or a Django scheduling library (Celery Beat, Django-Q).
+For Production/Continuous Operation: Schedule this command using cron (Linux/macOS), systemd timers (Linux).
 
 Example Cron Job (Linux/macOS):
 
@@ -173,6 +177,7 @@ Run publish command every 5 minutes, log output
 
 ### Usage Notes
 Data Accuracy: The application displays data sourced from VTS and Entur. Accuracy depends on the source providers.
+Check out: https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/
 
 ### Credits
 * Data Source: Norwegian Public Roads Administration (Statens vegvesen), Entur.
