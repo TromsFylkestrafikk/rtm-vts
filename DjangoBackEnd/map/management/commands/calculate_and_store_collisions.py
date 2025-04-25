@@ -1,3 +1,14 @@
+"""
+Django Management Command: update_collisions
+
+This command recalculates potential collisions between VTS and defined
+bus routes based on a specified proximity tolerance. It then updates the
+`DetectedCollision` table in the database with the results.
+
+By default, it clears all existing detected collisions before inserting the
+newly calculated ones. An option exists to prevent clearing and only add
+newly detected collisions not already present.
+"""
 import time
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -7,6 +18,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
+    """
+    Handles the recalculation and storage of detected collisions.
+
+    It calls an external function `calculate_collisions_for_storage` to
+    perform the geographic proximity analysis based on the provided tolerance.
+    The results are then processed and stored in the `DetectedCollision` model.
+
+    Key features:
+    - Customizable proximity tolerance via command-line argument.
+    - Option to clear existing collision data before inserting new results (default).
+    - Option to preserve existing data and only insert new, unique collision pairs.
+    - Uses `transaction.atomic` for database operations to ensure consistency.
+    - Uses `bulk_create` for efficient insertion of new records.
+    - Handles potential duplicate collision pairs (both against existing data
+      if not clearing, and within the newly calculated batch).
+    """
     help = 'Recalculates and updates the stored detected collisions between VTS points and bus routes.'
 
     def add_arguments(self, parser):
