@@ -40,8 +40,15 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'django.contrib.gis',
     "map",
+    'rest_framework',
+    'rest_framework_gis', # For GeoDjango support in DRF
+    'django_filters',     # For filtering
 ]
-
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 100  # Adjust page size as needed
+}
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

@@ -60,7 +60,7 @@ git clone git@github.com:TromsFylkestrafikk/rtm-vts.git
 
 cd rtm-vts
 ```
-### 2. Configure Environment Variables
+### 4. Configure Environment Variables
 This project uses a .env file in the project root directory to manage configuration.
 
 Install python-dotenv: (Should be in requirements.txt)
@@ -128,7 +128,7 @@ Calculate Initial Collisions:
 python manage.py update_collisions
 ```
 
-## Running the Application
+## 6. Running the Application
 ### 1. Run the Development Server
 ```Bash
 python manage.py runserver
@@ -163,10 +163,26 @@ Run publish command every 5 minutes, log output
 * **purge_transitinformation.py** (or similar name): Deletes data from VtsSituation.
 * **fetch_entur_trips.py:** Fetches trip data from Entur.
 * **fetch_coordinates.py:** Fetches bus route coordinates.
+### REST API
+A REST API is available for accessing detected collision data programmatically. It uses Django REST Framework.
 
+* Endpoint: /api/collisions/
+**Format:** Returns data in standard JSON format. Each collision object includes details and nested objects for the related bus_route and transit_information.
+* Filtering: The endpoint supports filtering via URL query parameters:
+**severity:** Filter by the severity field on the related VTS situation (case-insensitive exact match).
+*** Example:*** ?severity=high
+**bus_route:** Filter by the ID of the affected bus route.
+***Example: ?bus_route=42***
+**filter_used: Filter by text contained within the filter_used field on the related VTS situation (case-insensitive contains match).**
+***Example: ?filter_used=accident***
+**Combining Filters:** Use & to combine multiple filters.
+***Example: ?severity=medium&bus_route=45***
 ### MQTT Publishing
 * Broker: Connects to the broker defined in .env.
-
+Publish command:
+```Bash
+python manage.py publish_new_collisions
+```
 * Topics: Publishes new collisions to topics structured like:
 
 {MQTT_BASE_COLLISION_TOPIC}/route/{bus_route_id}/severity/{severity}/filter/{filter_used}
@@ -174,6 +190,7 @@ Run publish command every 5 minutes, log output
 (e.g., vts/collisions/route/123/severity/high/filter/accident) OR 
 (e.g., vts/collisions/+/123/severity/+/filter/+)
 * Payload: JSON containing details of the collision (IDs, location, timestamp, etc.).
+* The logs can be found in the folder "logs", and shows what is published.
 
 ### Usage Notes
 Data Accuracy: The application displays data sourced from VTS and Entur. Accuracy depends on the source providers.
