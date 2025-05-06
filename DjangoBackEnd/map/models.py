@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.gis.db import models as gis_models # Import GeoDjango models
 from django.utils import timezone
+from django.contrib.gis.geos import Point
 
 class ApiMetadata(models.Model):
     """
@@ -108,12 +109,21 @@ class DetectedCollision(models.Model):
     # Store when this collision record was created (when the check was run)
     detection_timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     tolerance_meters = models.IntegerField(default=50)
-    unique_together = ('transit_information', 'bus_route')
     published_to_mqtt = models.BooleanField(
         default=False,
         db_index=True, # Index for faster querying of unpublished items
         help_text="Flag indicating if this collision has been published via MQTT."
     )
+    @property
+    def collision_point(self):
+        """
+        Returns a GEOS Point object based on the stored longitude and latitude.
+        Returns None if coordinates are missing (though they shouldn't be).
+        """
+        if self.transit_lon is not None and self.transit_lat is not None:
+            # Create Point with (longitude, latitude)
+            return Point(self.transit_lon, self.transit_lat, srid=4326) # Assuming WGS84 coordinates
+        return None
     class Meta:
         verbose_name = "Detected Collision"
         verbose_name_plural = "Detected Collisions"

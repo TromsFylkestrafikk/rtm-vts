@@ -13,7 +13,11 @@ from django.contrib.gis.db.models.functions import Transform, Distance
 from django.db.models import OuterRef, Exists
 from django.db.models import Q
 from django.db import connection
-
+from rest_framework import viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import DetectedCollision
+from .serializers import DetectedCollisionSerializer
+from .filters import DetectedCollisionFilter
 def serve_geojson(request):
     """Serve the pre-generated GeoJSON file instead of querying the database."""
     geojson_path = os.path.join(settings.BASE_DIR, 'output.geojson')
@@ -553,3 +557,12 @@ def get_stored_collisions_view(request):
 
     # Return the data. The key "stored_collisions" clearly indicates the source.
     return JsonResponse({"stored_collisions": collision_data})
+class CollisionViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint that allows detected collisions to be viewed.
+    Supports filtering by 'severity', 'filter_used', and 'bus_route' (ID).
+    Example: /api/collisions/?severity=high&bus_route=123
+    """
+    queryset = DetectedCollision.objects.all().order_by('-detection_timestamp')
+    serializer_class = DetectedCollisionSerializer
+    filterset_class = DetectedCollisionFilter
